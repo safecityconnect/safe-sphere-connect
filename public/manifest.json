@@ -1,0 +1,19 @@
+{
+  "name": "SafeCity Connect India",
+  "short_name": "SafeCity",
+  "description": "Report. Protect. Respond. — India's community safety companion. Dial 112 for emergencies.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f0f7fa",
+  "theme_color": "#0d6e8a",
+  "orientation": "portrait-primary",
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
