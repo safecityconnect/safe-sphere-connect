@@ -32,6 +32,9 @@ export const ROUTES = {
   communityFeed: "/dashboard/community-feed",
   admin: "/admin",
   family: "/dashboard/family",
+  accountSettings: "/dashboard/account-settings",
+  notifications: "/dashboard/notifications",
+  help: "/dashboard/help",
 } as const;
 
 export type NavItem = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Award,
@@ -23,22 +23,29 @@ import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { useSimulatedLoading } from "@/hooks/useSimulatedLoading";
 import { LanguageSelector } from "@/components/ui/LanguageSelector";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { useEffect } from "react";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getCountFromServer,
+} from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+
 const menuItems = [
   { label: "Family Safety", icon: Users, description: "Invite and manage family links", href: ROUTES.family },
-  { label: "Account Settings", icon: Settings, description: "Name, email, password", href: undefined },
-  { label: "Notifications", icon: Bell, description: "Alerts and push preferences", href: undefined },
-  { label: "Privacy & Security", icon: Shield, description: "Data sharing and 2FA", href: undefined },
-  { label: "Help & Support", icon: HelpCircle, description: "FAQs and contact us", href: undefined },
+  { label: "Account Settings", icon: Settings, description: "Name, phone, and city", href: ROUTES.accountSettings },
+  { label: "Notifications", icon: Bell, description: "Alerts and push preferences", href: ROUTES.notifications },
+  { label: "Privacy & Security", icon: Shield, description: "Data sharing and privacy", href: undefined },
+  { label: "Help & Support", icon: HelpCircle, description: "FAQs and contact us", href: ROUTES.help },
 ];
 
 function Toggle({ enabled, onChange, label }: { enabled: boolean; onChange: () => void; label: string }) {
@@ -64,10 +71,36 @@ function Toggle({ enabled, onChange, label }: { enabled: boolean; onChange: () =
   );
 }
 
+type ProfileState = {
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  neighborhood: string;
+  memberSince: string;
+  avatarInitials: string;
+  stats: {
+    reportsFiled: number;
+    safeWalks: number;
+    incidentsReported: number;
+    communityPoints: number;
+  };
+};
+
+const defaultProfile: ProfileState = {
+  name: "",
+  email: "",
+  phone: "",
+  city: "",
+  neighborhood: "",
+  memberSince: "",
+  avatarInitials: "",
+  stats: { reportsFiled: 0, safeWalks: 0, incidentsReported: 0, communityPoints: 0 },
+};
+
 export function ProfileContent() {
   const { t } = useLocale();
   const router = useRouter();
-  const isLoading = useSimulatedLoading();
   const [isEditing, setIsEditing] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
@@ -75,66 +108,56 @@ export function ProfileContent() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
-  const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    city: "",
-    neighborhood: "",
-    memberSince: "",
-    avatarInitials: "",
-    stats: {
-      reportsFiled: 0,
-      safeWalks: 0,
-      incidentsReported: 0,
-      communityPoints: 0,
-    },
-  });
-  
+  const [profile, setProfile] = useState<ProfileState>(defaultProfile);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      
       if (!user) {
-        console.log("NO USER");
         setIsProfileLoading(false);
         return;
       }
-  
-      console.log("USER FOUND:", user.uid);
-      console.log("PATH:", "users/" + user.uid);
-      console.log("PROJECT:", db.app.options.projectId);
-  
-      const docRef = doc(
-        db,
-        "users",
-        user.uid
-      );
-  
+
+      const docRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(docRef);
-  
-      console.log("DOCUMENT EXISTS:", docSnap.exists());
-      console.log("DATA:", docSnap.data());
-  
+
       if (docSnap.exists()) {
-        setProfile((prev) => {
-          const data = docSnap.data();
-        
-          return {
-            ...prev,
-            ...data,
-            avatarInitials: String(data.name || "Citizen")
+        const data = docSnap.data();
+        setProfile((prev) => ({
+          ...prev,
+          ...data,
+          avatarInitials: String(data.name || "Citizen")
             .split(" ")
             .map((word: string) => word[0])
             .join("")
             .toUpperCase(),
-          };
-        });
+        }));
+        setPushEnabled(data.preferences?.pushNotifications ?? true);
+        setLocationEnabled(data.preferences?.locationSharing ?? true);
       }
+
+      // Live incident count for this user
+      const incQuery = query(
+        collection(db, "incidents"),
+        where("userId", "==", user.uid)
+      );
+      const countSnap = await getCountFromServer(incQuery);
+      const incidentCount = countSnap.data().count;
+
+      setProfile((prev) => ({
+        ...prev,
+        stats: {
+          ...prev.stats,
+          reportsFiled: incidentCount,
+          incidentsReported: incidentCount,
+        },
+      }));
+
       setIsProfileLoading(false);
     });
-  
+
     return () => unsubscribe();
   }, []);
+
   const handleSave = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -167,11 +190,40 @@ export function ProfileContent() {
     }
   };
 
+  const handleTogglePush = async () => {
+    const newValue = !pushEnabled;
+    setPushEnabled(newValue);
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        "preferences.pushNotifications": newValue,
+      });
+    } catch {
+      setPushEnabled(!newValue);
+    }
+  };
+
+  const handleToggleLocation = async () => {
+    const newValue = !locationEnabled;
+    setLocationEnabled(newValue);
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        "preferences.locationSharing": newValue,
+      });
+    } catch {
+      setLocationEnabled(!newValue);
+    }
+  };
+
   const handleLogout = async () => {
     await signOut(auth);
     router.push("/login");
   };
-  if (isLoading || isProfileLoading) {
+
+  if (isProfileLoading) {
     return (
       <PageContainer withBottomNav>
         <PageHeader title={t.profile} subtitle={t.loading} backHref={ROUTES.dashboard} />
@@ -200,10 +252,12 @@ export function ProfileContent() {
             <p className="text-sm text-muted">{profile.email}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge variant="info">Citizen Member</Badge>
-              <span className="flex items-center gap-1 text-xs text-muted">
-                <MapPin className="h-3 w-3" />
-                {profile.neighborhood}
-              </span>
+              {profile.neighborhood && (
+                <span className="flex items-center gap-1 text-xs text-muted">
+                  <MapPin className="h-3 w-3" />
+                  {profile.neighborhood}
+                </span>
+              )}
             </div>
           </div>
           <Button
@@ -216,9 +270,11 @@ export function ProfileContent() {
             {isEditing ? (isSaving ? "Saving…" : "Done") : "Edit"}
           </Button>
         </div>
-        <p className="mt-3 border-t border-border pt-3 text-xs text-muted">
-          Member since {profile.memberSince}
-        </p>
+        {profile.memberSince && (
+          <p className="mt-3 border-t border-border pt-3 text-xs text-muted">
+            Member since {profile.memberSince}
+          </p>
+        )}
       </Card>
 
       {isEditing && (
@@ -304,7 +360,7 @@ export function ProfileContent() {
             </div>
             <Toggle
               enabled={pushEnabled}
-              onChange={() => setPushEnabled(!pushEnabled)}
+              onChange={handleTogglePush}
               label="Push notifications"
             />
           </div>
@@ -315,7 +371,7 @@ export function ProfileContent() {
             </div>
             <Toggle
               enabled={locationEnabled}
-              onChange={() => setLocationEnabled(!locationEnabled)}
+              onChange={handleToggleLocation}
               label="Location sharing"
             />
           </div>
