@@ -28,6 +28,7 @@ type FormState = {
   description: string;
   category: IncidentCategory;
   location: string;
+  city: string;
 };
 
 const initialForm: FormState = {
@@ -35,6 +36,7 @@ const initialForm: FormState = {
   description: "",
   category: INCIDENT_CATEGORIES[0],
   location: "",
+  city: "",
 };
 
 export function ReportIncidentContent() {
@@ -57,10 +59,20 @@ export function ReportIncidentContent() {
       await addDoc(collection(db, "incidents"), {
         title: form.title,
         description: form.description,
+        // legacy fields (backward compat)
         category: form.category,
         location: form.location,
+        // approved schema fields
+        incidentCategory: form.category,
+        locationText: form.location,
+        city: form.city,
+        severity: "medium",
+        markerType: "incident",
+        verificationStatus: "pending",
+        visibility: "pending",
         userId: user.uid,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         status: "open",
       });
       setSubmitSuccess(true);
@@ -126,6 +138,15 @@ export function ReportIncidentContent() {
             placeholder="Sector, landmark, or street address"
             value={form.location}
             onChange={(e) => setForm({ ...form, location: e.target.value })}
+            required
+            disabled={isSubmitting}
+          />
+
+          <Input
+            label="City"
+            placeholder="e.g. Chandigarh"
+            value={form.city}
+            onChange={(e) => setForm({ ...form, city: e.target.value })}
             required
             disabled={isSubmitting}
           />
