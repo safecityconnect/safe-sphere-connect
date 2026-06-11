@@ -31,6 +31,7 @@ export const ROUTES = {
   reportIncident: "/dashboard/report-incident",
   communityFeed: "/dashboard/community-feed",
   admin: "/admin",
+  family: "/dashboard/family",
 } as const;
 
 export type NavItem = {

@@ -1,0 +1,17 @@
+V1
+- Authentication
+- Profiles
+- Incident Reporting
+- Community Feed
+
+V2
+- Parent-Child Linking
+- Journey Scheduling
+
+V3
+- Automatic Arrival Detection
+- SOS
+
+V4
+- Notifications
+- Community Interactions

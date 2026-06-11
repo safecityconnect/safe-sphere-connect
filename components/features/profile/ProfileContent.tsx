@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Award,
   Bell,
@@ -33,10 +34,11 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
 const menuItems = [
-  { label: "Account Settings", icon: Settings, description: "Name, email, password" },
-  { label: "Notifications", icon: Bell, description: "Alerts and push preferences" },
-  { label: "Privacy & Security", icon: Shield, description: "Data sharing and 2FA" },
-  { label: "Help & Support", icon: HelpCircle, description: "FAQs and contact us" },
+  { label: "Family Safety", icon: Users, description: "Invite and manage family links", href: ROUTES.family },
+  { label: "Account Settings", icon: Settings, description: "Name, email, password", href: undefined },
+  { label: "Notifications", icon: Bell, description: "Alerts and push preferences", href: undefined },
+  { label: "Privacy & Security", icon: Shield, description: "Data sharing and 2FA", href: undefined },
+  { label: "Help & Support", icon: HelpCircle, description: "FAQs and contact us", href: undefined },
 ];
 
 function Toggle({ enabled, onChange, label }: { enabled: boolean; onChange: () => void; label: string }) {
@@ -325,21 +327,30 @@ export function ProfileContent() {
         <Card padding="none" className="overflow-hidden">
           {menuItems.map((item, index) => {
             const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                type="button"
-                className={cn(
-                  "flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-primary-light/50",
-                  index < menuItems.length - 1 && "border-b border-border"
-                )}
-              >
+            const sharedClasses = cn(
+              "flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-primary-light/50",
+              index < menuItems.length - 1 && "border-b border-border"
+            );
+            const inner = (
+              <>
                 <Icon className="h-5 w-5 shrink-0 text-muted" />
                 <div className="min-w-0 flex-1">
                   <span className="block text-sm font-medium text-foreground">{item.label}</span>
                   <span className="block text-xs text-muted">{item.description}</span>
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+              </>
+            );
+            if (item.href) {
+              return (
+                <Link key={item.label} href={item.href} className={sharedClasses}>
+                  {inner}
+                </Link>
+              );
+            }
+            return (
+              <button key={item.label} type="button" className={sharedClasses}>
+                {inner}
               </button>
             );
           })}
