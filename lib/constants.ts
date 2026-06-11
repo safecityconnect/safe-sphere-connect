@@ -9,6 +9,7 @@ import {
   User,
   Wrench,
   Siren,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -28,6 +29,7 @@ export const ROUTES = {
   cityHealth: "/dashboard/city-health",
   profile: "/dashboard/profile",
   reportIncident: "/dashboard/report-incident",
+  communityFeed: "/dashboard/community-feed",
   admin: "/admin",
 } as const;
 
@@ -117,5 +119,12 @@ export const DASHBOARD_CARDS: DashboardCardItem[] = [
     href: ROUTES.reportIncident,
     icon: Siren,
     color: "red",
+  },
+  {
+    title: "Community Feed",
+    description: "Browse all incidents reported by the community",
+    href: ROUTES.communityFeed,
+    icon: Users,
+    color: "teal",
   },
 ];
