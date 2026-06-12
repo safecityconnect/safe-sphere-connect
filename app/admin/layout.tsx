@@ -8,6 +8,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
+import { AdminAuthGuard } from "@/components/layout/AdminAuthGuard";
 import { ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
+    <AdminAuthGuard>
     <div className="flex min-h-full flex-1">
       <aside className="hidden w-64 shrink-0 border-r border-border bg-surface lg:block">
         <div className="border-b border-border p-5">
@@ -86,5 +88,6 @@ export default function AdminLayout({
         </nav>
       </div>
     </div>
+    </AdminAuthGuard>
   );
 }

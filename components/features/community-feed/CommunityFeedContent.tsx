@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -51,8 +51,12 @@ export function CommunityFeedContent() {
   useEffect(() => {
     async function fetchIncidents() {
       try {
+        // Only show admin-approved public incidents.
+        // Requires a composite Firestore index on (verificationStatus, visibility, createdAt DESC).
         const q = query(
           collection(db, "incidents"),
+          where("verificationStatus", "==", "verified"),
+          where("visibility", "==", "public"),
           orderBy("createdAt", "desc")
         );
         const snapshot = await getDocs(q);
