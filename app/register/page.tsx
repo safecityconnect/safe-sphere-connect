@@ -12,6 +12,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { isMinorByDob } from "@/lib/family";
+import { GuardianLinkPrompt } from "@/components/features/family/GuardianLinkPrompt";
 import React from "react";
 import { Users, Shield } from "lucide-react";
 
@@ -24,22 +25,61 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    email?: string;
+    dateOfBirth?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
   const [showFamilyPrompt, setShowFamilyPrompt] = useState(false);
+  const [showGuardianPrompt, setShowGuardianPrompt] = useState(false);
 
   const maxDate = new Date();
   maxDate.setFullYear(maxDate.getFullYear() - 5);
   const maxDateStr = maxDate.toISOString().split("T")[0];
 
+  const validateForm = (): boolean => {
+    const errors: typeof fieldErrors = {};
+
+    if (!name.trim()) {
+      errors.name = "Name is required.";
+    }
+
+    if (!email.trim()) {
+      errors.email = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Please enter a valid email address.";
+    }
+
+    if (!dateOfBirth) {
+      errors.dateOfBirth = "Please enter your date of birth.";
+    }
+
+    if (!password) {
+      errors.password = "Password is required.";
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters.";
+    }
+
+    if (password && confirmPassword && password !== confirmPassword) {
+      errors.confirmPassword = "Passwords do not match.";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
+    setFieldErrors({});
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
+    if (!validateForm()) {
       return;
     }
+
+    setLoading(true);
 
     try {
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
@@ -68,16 +108,41 @@ export default function RegisterPage() {
       });
 
       if (minor) {
-        router.push(ROUTES.dashboard);
+        setShowGuardianPrompt(true);
       } else {
         setShowFamilyPrompt(true);
       }
-    } catch {
-      setError("Failed to create account. Please try again.");
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      switch (code) {
+        case "auth/email-already-in-use":
+          setError("An account with this email already exists.");
+          break;
+        case "auth/invalid-email":
+          setError("Please enter a valid email address.");
+          break;
+        case "auth/weak-password":
+          setError("Password must be at least 6 characters.");
+          break;
+        case "auth/network-request-failed":
+          setError("Network error. Please try again.");
+          break;
+        default:
+          setError("Unable to create account. Please try again.");
+      }
     }
 
     setLoading(false);
   };
+
+  if (showGuardianPrompt) {
+    return (
+      <GuardianLinkPrompt
+        onLinkNow={() => router.push(ROUTES.family)}
+        onDismiss={() => router.push(ROUTES.dashboard)}
+      />
+    );
+  }
 
   if (showFamilyPrompt) {
     return (
@@ -144,7 +209,7 @@ export default function RegisterPage() {
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              required
+              error={fieldErrors.name}
             />
             <Input
               label="Email"
@@ -153,15 +218,15 @@ export default function RegisterPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
+              error={fieldErrors.email}
             />
             <Input
               label="Date of Birth"
               type="date"
               value={dateOfBirth}
               onChange={(e) => setDateOfBirth(e.target.value)}
-              required
               max={maxDateStr}
+              error={fieldErrors.dateOfBirth}
             />
             <Input
               label="Password"
@@ -170,7 +235,7 @@ export default function RegisterPage() {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
+              error={fieldErrors.password}
             />
             <Input
               label="Confirm Password"
@@ -179,7 +244,7 @@ export default function RegisterPage() {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              required
+              error={fieldErrors.confirmPassword}
             />
 
             {error && (
