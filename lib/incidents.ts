@@ -11,6 +11,17 @@ import {
 import { db } from "@/lib/firebase";
 import type { Incident, VerificationStatus } from "@/lib/types/incident";
 
+export async function listPublicVerifiedIncidents(): Promise<Incident[]> {
+  const q = query(
+    collection(db, "incidents"),
+    where("verificationStatus", "==", "verified"),
+    where("visibility", "==", "public"),
+    orderBy("createdAt", "desc")
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Incident, "id">) }));
+}
+
 export async function listIncidentsByVerificationStatus(
   status: VerificationStatus
 ): Promise<Incident[]> {

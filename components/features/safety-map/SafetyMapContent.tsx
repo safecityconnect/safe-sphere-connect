@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle,
@@ -20,18 +20,18 @@ import { ListSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useLocale } from "@/components/providers/LocaleProvider";
-import { useSimulatedLoading } from "@/hooks/useSimulatedLoading";
 import { ROUTES } from "@/lib/constants";
 import {
   DEFAULT_CITY,
   INDIAN_CITIES,
   MAP_FILTERS,
-  MAP_INCIDENTS,
   POLICE_STATIONS,
   type IncidentSeverity,
   type IndianCity,
   type MapMarkerType,
 } from "@/lib/sample-data";
+import { listPublicVerifiedIncidents } from "@/lib/incidents";
+import type { Incident } from "@/lib/types/incident";
 import { MapCanvas } from "./MapCanvas";
 import { cn } from "@/lib/utils";
 
@@ -48,13 +48,83 @@ const categoryIcon: Record<MapMarkerType, typeof AlertTriangle> = {
   "police-station": Building2,
 };
 
+// ── Adapter: Firestore Incident → local display shape ──────────────────────
+
+type MapDisplayIncident = {
+  id: string;
+  type: string;
+  category: MapMarkerType;
+  city: string;
+  location: string;
+  distance: string;
+  time: string;
+  severity: IncidentSeverity;
+  verified: boolean;
+  description: string;
+};
+
+const VALID_MARKER_TYPES = new Set<string>(["incident", "safe-zone", "hazard", "police-station"]);
+
+function toMarkerType(raw: string): MapMarkerType {
+  return VALID_MARKER_TYPES.has(raw) ? (raw as MapMarkerType) : "incident";
+}
+
+function formatRelativeTime(ts: Incident["createdAt"]): string {
+  if (!ts) return "—";
+  const diffMs = Date.now() - ts.toDate().getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days > 1 ? "s" : ""} ago`;
+}
+
+function toDisplayIncident(incident: Incident): MapDisplayIncident {
+  return {
+    id: incident.id,
+    type: incident.title,
+    category: toMarkerType(incident.markerType),
+    city: incident.city,
+    location: incident.locationText || incident.location || "—",
+    distance: "—",
+    time: formatRelativeTime(incident.createdAt),
+    severity: (incident.severity as IncidentSeverity) ?? "medium",
+    verified: incident.verificationStatus === "verified",
+    description: incident.description,
+  };
+}
+
+// ── Component ───────────────────────────────────────────────────────────────
+
 export function SafetyMapContent() {
   const { t } = useLocale();
-  const isLoading = useSimulatedLoading();
   const [filter, setFilter] = useState<(typeof MAP_FILTERS)[number]["id"]>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showLayers, setShowLayers] = useState(false);
   const [city, setCity] = useState<IndianCity>(DEFAULT_CITY);
+
+  const [allIncidents, setAllIncidents] = useState<MapDisplayIncident[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchIncidents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const raw = await listPublicVerifiedIncidents();
+      setAllIncidents(raw.map(toDisplayIncident));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load incidents.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchIncidents();
+  }, [fetchIncidents]);
 
   const cityFilters = useMemo(
     () => INDIAN_CITIES.map((c) => ({ id: c, label: c })),
@@ -80,12 +150,12 @@ export function SafetyMapContent() {
   );
 
   const filtered = useMemo(() => {
-    let items = MAP_INCIDENTS.filter((i) => i.city === city);
+    let items = allIncidents.filter((i) => i.city === city);
     if (filter !== "all") {
       items = items.filter((i) => i.category === filter);
     }
     return items;
-  }, [filter, city]);
+  }, [allIncidents, filter, city]);
 
   const nearbyPolice = useMemo(
     () => POLICE_STATIONS.filter((s) => s.city === city),
@@ -94,7 +164,7 @@ export function SafetyMapContent() {
 
   const selected = filtered.find((i) => i.id === selectedId) ?? null;
 
-  if (isLoading) {
+  if (loading) {
     return (
       <PageContainer withBottomNav>
         <PageHeader title={t.safetyMap} subtitle={t.loading} backHref={ROUTES.dashboard} />
@@ -134,7 +204,7 @@ export function SafetyMapContent() {
 
       <Card padding="none" className="mb-4 overflow-hidden">
         <MapCanvas
-          incidents={filtered}
+          incidents={[]}
           selectedId={selectedId}
           city={city}
           onSelect={setSelectedId}
@@ -184,6 +254,10 @@ export function SafetyMapContent() {
         onChange={setFilter}
         className="mb-4"
       />
+
+      {error && (
+        <p className="mb-4 rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">{error}</p>
+      )}
 
       {selected && (
         <Card padding="sm" className="mb-4 border-primary/30 bg-primary-light/30">
