@@ -15,6 +15,10 @@ export type Incident = {
   /** Legacy field */
   location?: string;
   city: string;
+  /** GPS latitude captured at report time (optional for legacy incidents) */
+  latitude?: number;
+  /** GPS longitude captured at report time (optional for legacy incidents) */
+  longitude?: number;
   severity: "low" | "medium" | "high";
   markerType: string;
   verificationStatus: VerificationStatus;

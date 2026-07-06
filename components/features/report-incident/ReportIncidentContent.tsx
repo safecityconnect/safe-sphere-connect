@@ -39,6 +39,22 @@ const initialForm: FormState = {
   city: "",
 };
 
+function getCurrentCoordinates(): Promise<{ latitude: number; longitude: number } | null> {
+  if (!navigator.geolocation) return Promise.resolve(null);
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8_000, maximumAge: 60_000 }
+    );
+  });
+}
+
 export function ReportIncidentContent() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +72,8 @@ export function ReportIncidentContent() {
     setSubmitError(null);
     setSubmitSuccess(false);
     try {
+      const coords = await getCurrentCoordinates();
+
       await addDoc(collection(db, "incidents"), {
         title: form.title,
         description: form.description,
@@ -66,6 +84,9 @@ export function ReportIncidentContent() {
         incidentCategory: form.category,
         locationText: form.location,
         city: form.city,
+        ...(coords
+          ? { latitude: coords.latitude, longitude: coords.longitude }
+          : {}),
         severity: "medium",
         markerType: "incident",
         verificationStatus: "pending",

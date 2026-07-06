@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle,
@@ -31,6 +31,8 @@ import {
   type MapMarkerType,
 } from "@/lib/sample-data";
 import { listPublicVerifiedIncidents } from "@/lib/incidents";
+import { incidentsToMarkers } from "@/lib/map/incident-to-marker";
+import type { LatLng } from "@/lib/map/city-centers";
 import type { Incident } from "@/lib/types/incident";
 import { MapCanvas } from "./MapCanvas";
 import { cn } from "@/lib/utils";
@@ -104,17 +106,20 @@ export function SafetyMapContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showLayers, setShowLayers] = useState(false);
   const [city, setCity] = useState<IndianCity>(DEFAULT_CITY);
+  const [centerTarget, setCenterTarget] = useState<LatLng | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
-  const [allIncidents, setAllIncidents] = useState<MapDisplayIncident[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const listItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const fetchIncidents = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const raw = await listPublicVerifiedIncidents();
-      setAllIncidents(raw.map(toDisplayIncident));
+      setIncidents(raw);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load incidents.");
     } finally {
@@ -149,20 +154,66 @@ export function SafetyMapContent() {
     [t]
   );
 
+  const displayIncidents = useMemo(
+    () => incidents.map(toDisplayIncident),
+    [incidents]
+  );
+
   const filtered = useMemo(() => {
-    let items = allIncidents.filter((i) => i.city === city);
+    let items = displayIncidents.filter((i) => i.city === city);
     if (filter !== "all") {
       items = items.filter((i) => i.category === filter);
     }
     return items;
-  }, [allIncidents, filter, city]);
+  }, [displayIncidents, filter, city]);
+
+  const mapMarkers = useMemo(() => {
+    let items = incidents.filter((i) => i.city === city);
+    if (filter !== "all") {
+      items = items.filter((i) => toMarkerType(i.markerType) === filter);
+    }
+    return incidentsToMarkers(items);
+  }, [incidents, filter, city]);
+
+  const activeSelectedId = useMemo(() => {
+    if (!selectedId) return null;
+    return filtered.some((i) => i.id === selectedId) ? selectedId : null;
+  }, [filtered, selectedId]);
+
+  useEffect(() => {
+    if (!activeSelectedId) return;
+    const el = listItemRefs.current.get(activeSelectedId);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [activeSelectedId]);
+
+  const handleCenterOnMe = () => {
+    setLocationError(null);
+    if (!navigator.geolocation) {
+      setLocationError("Location is not supported on this device.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCenterTarget({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+      },
+      () => {
+        setLocationError(
+          "Could not get your location. Please allow location access in your browser."
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }
+    );
+  };
 
   const nearbyPolice = useMemo(
     () => POLICE_STATIONS.filter((s) => s.city === city),
     [city]
   );
 
-  const selected = filtered.find((i) => i.id === selectedId) ?? null;
+  const selected = filtered.find((i) => i.id === activeSelectedId) ?? null;
 
   if (loading) {
     return (
@@ -204,13 +255,19 @@ export function SafetyMapContent() {
 
       <Card padding="none" className="mb-4 overflow-hidden">
         <MapCanvas
-          incidents={[]}
-          selectedId={selectedId}
+          markers={mapMarkers}
+          selectedId={activeSelectedId}
           city={city}
+          centerTarget={centerTarget}
           onSelect={setSelectedId}
         />
         <div className="flex gap-2 border-t border-border p-3">
-          <Button size="sm" variant="secondary" className="flex-1">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="flex-1"
+            onClick={handleCenterOnMe}
+          >
             <Navigation className="h-4 w-4" />
             {t.centerOnMe}
           </Button>
@@ -254,6 +311,12 @@ export function SafetyMapContent() {
         onChange={setFilter}
         className="mb-4"
       />
+
+      {locationError && (
+        <p className="mb-4 rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">
+          {locationError}
+        </p>
+      )}
 
       {error && (
         <p className="mb-4 rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">{error}</p>
@@ -326,15 +389,21 @@ export function SafetyMapContent() {
             {filtered.map((incident) => {
               const Icon = categoryIcon[incident.category];
               return (
-                <Card
+                <div
                   key={incident.id}
-                  padding="sm"
-                  className={cn(
-                    "cursor-pointer transition-colors hover:border-primary/30",
-                    selectedId === incident.id && "border-primary/40 bg-primary-light/20"
-                  )}
-                  onClick={() => setSelectedId(incident.id)}
+                  ref={(el) => {
+                    if (el) listItemRefs.current.set(incident.id, el);
+                    else listItemRefs.current.delete(incident.id);
+                  }}
                 >
+                  <Card
+                    padding="sm"
+                    className={cn(
+                      "cursor-pointer transition-colors hover:border-primary/30",
+                      activeSelectedId === incident.id && "border-primary/40 bg-primary-light/20"
+                    )}
+                    onClick={() => setSelectedId(incident.id)}
+                  >
                   <div className="flex items-start gap-3">
                     <div
                       className={cn(
@@ -371,6 +440,7 @@ export function SafetyMapContent() {
                     </div>
                   </div>
                 </Card>
+                </div>
               );
             })}
           </div>
