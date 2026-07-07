@@ -12,6 +12,7 @@ import {
   Building2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { SafeSphereVerifiedBadge } from "@/components/ui/SafeSphereVerifiedBadge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -62,6 +63,7 @@ type MapDisplayIncident = {
   time: string;
   severity: IncidentSeverity;
   verified: boolean;
+  safesphereVerified: boolean;
   description: string;
 };
 
@@ -94,6 +96,7 @@ function toDisplayIncident(incident: Incident): MapDisplayIncident {
     time: formatRelativeTime(incident.createdAt),
     severity: (incident.severity as IncidentSeverity) ?? "medium",
     verified: incident.verificationStatus === "verified",
+    safesphereVerified: incident.safesphereVerified === true,
     description: incident.description,
   };
 }
@@ -337,6 +340,11 @@ export function SafetyMapContent() {
               {t.close}
             </button>
           </div>
+          {selected.safesphereVerified && (
+            <div className="mt-2">
+              <SafeSphereVerifiedBadge />
+            </div>
+          )}
           <p className="mt-2 text-sm text-foreground/80">{selected.description}</p>
         </Card>
       )}
@@ -427,6 +435,9 @@ export function SafetyMapContent() {
                             <CheckCircle className="h-3 w-3" />
                             {t.verified}
                           </Badge>
+                        )}
+                        {incident.safesphereVerified && (
+                          <SafeSphereVerifiedBadge />
                         )}
                       </div>
                       <p className="text-sm text-muted">{incident.location}</p>

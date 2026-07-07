@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle, FileText, Plus } from "lucide-react";
+import { AlertTriangle, CheckCircle, FileText, Plus, Shield } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -10,6 +10,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ROUTES } from "@/lib/constants";
 import { auth, db } from "@/lib/firebase";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const INCIDENT_CATEGORIES = [
   "Theft / Snatching",
@@ -56,7 +57,9 @@ function getCurrentCoordinates(): Promise<{ latitude: number; longitude: number 
 }
 
 export function ReportIncidentContent() {
+  const { isAdmin } = useIsAdmin();
   const [form, setForm] = useState<FormState>(initialForm);
+  const [safesphereVerified, setSafesphereVerified] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -74,6 +77,8 @@ export function ReportIncidentContent() {
     try {
       const coords = await getCurrentCoordinates();
 
+      const isVerifiedPublish = isAdmin && safesphereVerified;
+
       await addDoc(collection(db, "incidents"), {
         title: form.title,
         description: form.description,
@@ -89,8 +94,11 @@ export function ReportIncidentContent() {
           : {}),
         severity: "medium",
         markerType: "incident",
-        verificationStatus: "pending",
-        visibility: "pending",
+        // SafeSphere Verified reports bypass the moderation queue and are
+        // published immediately; all other reports follow the normal workflow.
+        safesphereVerified: isVerifiedPublish,
+        verificationStatus: isVerifiedPublish ? "verified" : "pending",
+        visibility: isVerifiedPublish ? "public" : "pending",
         userId: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -98,6 +106,7 @@ export function ReportIncidentContent() {
       });
       setSubmitSuccess(true);
       setForm(initialForm);
+      setSafesphereVerified(false);
       setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (err) {
       setSubmitError(
@@ -184,6 +193,27 @@ export function ReportIncidentContent() {
             />
           </div>
 
+          {isAdmin && (
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
+                checked={safesphereVerified}
+                onChange={(e) => setSafesphereVerified(e.target.checked)}
+                disabled={isSubmitting}
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-800">
+                  <Shield className="h-3.5 w-3.5 shrink-0" />
+                  Publish as SafeSphere Verified
+                </span>
+                <span className="text-xs text-blue-600">
+                  Report will be published immediately and displayed with the SafeSphere Verified badge.
+                </span>
+              </span>
+            </label>
+          )}
+
           {submitError && (
             <p className="rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">
               {submitError}
@@ -216,8 +246,7 @@ export function ReportIncidentContent() {
           <div>
             <p className="text-sm font-medium text-foreground">What happens next?</p>
             <p className="mt-1 text-xs text-muted">
-              Your report is reviewed by our moderation team and forwarded to local authorities.
-              Every submission helps improve the safety data for your city.
+              Your report will be reviewed by the SafeSphere moderation team. Once verified, it may be published on the Safety Map and Community Feed to help keep the community informed.
             </p>
           </div>
         </div>

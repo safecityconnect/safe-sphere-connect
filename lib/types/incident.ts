@@ -30,6 +30,8 @@ export type Incident = {
   reviewedBy?: string;
   reviewedAt?: { toDate: () => Date } | null;
   reviewNotes?: string;
+  /** Set to true for reports published directly by the SafeSphere team */
+  safesphereVerified?: boolean;
 };
 
 export function incidentCategory(incident: Incident): string {

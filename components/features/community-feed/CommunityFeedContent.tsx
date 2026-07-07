@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { SafeSphereVerifiedBadge } from "@/components/ui/SafeSphereVerifiedBadge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ListSkeleton } from "@/components/ui/Skeleton";
@@ -22,6 +23,7 @@ type Incident = {
   location: string;
   status: string;
   createdAt: { toDate: () => Date } | null;
+  safesphereVerified?: boolean;
 };
 
 const STATUS_VARIANT: Record<string, BadgeVariant> = {
@@ -113,6 +115,12 @@ export function CommunityFeedContent() {
                   {incident.status}
                 </Badge>
               </div>
+
+              {incident.safesphereVerified && (
+                <div className="mt-1.5">
+                  <SafeSphereVerifiedBadge />
+                </div>
+              )}
 
               <p className="mt-1.5 text-sm text-muted line-clamp-2">
                 {incident.description}
