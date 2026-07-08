@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   MapPin,
@@ -9,10 +10,12 @@ import {
   Wrench,
   User,
 } from "lucide-react";
+import { onAuthStateChanged } from "firebase/auth";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/layout/Logo";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
+import { auth } from "@/lib/firebase";
 import { INDIAN_EMERGENCY_SERVICES } from "@/lib/emergency-services";
 import Link from "next/link";
 
@@ -47,6 +50,14 @@ const featureKeys = [
 
 export function LandingContent() {
   const { t } = useLocale();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setIsAuthenticated(!!currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -54,16 +65,22 @@ export function LandingContent() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
           <Logo size="sm" />
           <div className="flex items-center gap-2">
-            <Button href={ROUTES.login} variant="ghost" size="sm">
-              Log in
-            </Button>
-            <Button href={ROUTES.register} size="sm">
-              {t.createAccount}
-            </Button>
-            <Button href="/dashboard/profile" variant="ghost" size="sm">
-            <User className="h-4 w-4" />
-            Profile
-            </Button>
+            {!isAuthenticated && (
+              <>
+                <Button href={ROUTES.login} variant="ghost" size="sm">
+                  Log in
+                </Button>
+                <Button href={ROUTES.register} size="sm">
+                  {t.createAccount}
+                </Button>
+              </>
+            )}
+            {isAuthenticated && (
+              <Button href="/dashboard/profile" variant="ghost" size="sm">
+                <User className="h-4 w-4" />
+                Profile
+              </Button>
+            )}
           </div>
         </div>
       </header>

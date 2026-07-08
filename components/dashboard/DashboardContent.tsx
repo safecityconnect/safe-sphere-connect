@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, ChevronRight, Moon, Shield } from "lucide-react";
+import { ChevronRight, Moon, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { NotificationBell } from "@/components/features/notifications/NotificationBell";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { DASHBOARD_CARDS, ROUTES } from "@/lib/constants";
@@ -13,7 +14,6 @@ import { auth } from "@/lib/firebase";
 import { useEffect, useState } from "react";
 
 export function DashboardContent() {
-  const [showNotifications, setShowNotifications] = useState(false);
   const [userEmail, setUserEmail] = useState("");
 
 useEffect(() => {
@@ -35,55 +35,7 @@ useEffect(() => {
           <h1 className="text-2xl font-bold text-foreground">{t.dashboard}</h1>
           <p className="mt-0.5 text-xs text-muted">{t.tagline}</p>
         </div>
-        <button
-        type="button"
-         onClick={() => setShowNotifications(!showNotifications)}
-          className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-muted transition-colors hover:bg-primary-light hover:text-primary"
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white">
-            3
-          </span>
-        </button>
-        {showNotifications && (
-  <div className="absolute right-0 top-16 z-50 w-72 rounded-xl border bg-white shadow-xl p-3">
-    <h3 className="mb-3 font-semibold">
-      Notifications
-    </h3>
-
-    <div className="space-y-3">
-
-      <div className="border-b pb-2">
-        <p className="font-medium">
-          Welcome to SafeCity
-        </p>
-        <p className="text-xs text-muted">
-          Your account has been created successfully.
-        </p>
-      </div>
-
-      <div className="border-b pb-2">
-        <p className="font-medium">
-          Safe Walk Available
-        </p>
-        <p className="text-xs text-muted">
-          Start a monitored walk anytime.
-        </p>
-      </div>
-
-      <div>
-        <p className="font-medium">
-          Emergency Contacts
-        </p>
-        <p className="text-xs text-muted">
-          Add trusted contacts in your profile.
-        </p>
-      </div>
-
-    </div>
-  </div>
-)}
+        <NotificationBell />
       </header>
 
       <Card padding="sm" className="mb-6 border-indigo-200 bg-indigo-50/50">
