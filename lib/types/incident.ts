@@ -32,6 +32,8 @@ export type Incident = {
   reviewNotes?: string;
   /** Set to true for reports published directly by the SafeSphere team */
   safesphereVerified?: boolean;
+  /** Download URLs for photos attached to the report (max 3). Absent for legacy incidents. */
+  imageUrls?: string[];
 };
 
 export function incidentCategory(incident: Incident): string {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { IncidentImages } from "@/components/ui/IncidentImages";
 import { incidentCategory, incidentLocation, type Incident } from "@/lib/types/incident";
 import { approveIncident, rejectIncident } from "@/lib/incidents";
 import { auth } from "@/lib/firebase";
@@ -82,6 +83,8 @@ export function IncidentReviewPanel({ incident, onReviewed }: Props) {
         </div>
 
         <p className="pt-2 leading-relaxed">{incident.description || "No description provided."}</p>
+
+        <IncidentImages urls={incident.imageUrls} className="pt-2" thumbnailClassName="h-24 w-24" />
 
         <p className="pt-1 text-xs">
           <span className="font-medium text-foreground">Reporter UID: </span>

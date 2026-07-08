@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterChips } from "@/components/ui/FilterChips";
+import { IncidentImages } from "@/components/ui/IncidentImages";
 import { ListSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -65,6 +66,7 @@ type MapDisplayIncident = {
   verified: boolean;
   safesphereVerified: boolean;
   description: string;
+  imageUrls?: string[];
 };
 
 const VALID_MARKER_TYPES = new Set<string>(["incident", "safe-zone", "hazard", "police-station"]);
@@ -98,6 +100,7 @@ function toDisplayIncident(incident: Incident): MapDisplayIncident {
     verified: incident.verificationStatus === "verified",
     safesphereVerified: incident.safesphereVerified === true,
     description: incident.description,
+    imageUrls: incident.imageUrls,
   };
 }
 
@@ -346,6 +349,7 @@ export function SafetyMapContent() {
             </div>
           )}
           <p className="mt-2 text-sm text-foreground/80">{selected.description}</p>
+          <IncidentImages urls={selected.imageUrls} className="mt-3" />
         </Card>
       )}
 

@@ -1,30 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { SafeSphereVerifiedBadge } from "@/components/ui/SafeSphereVerifiedBadge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { IncidentImages } from "@/components/ui/IncidentImages";
 import { ListSkeleton } from "@/components/ui/Skeleton";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { db } from "@/lib/firebase";
 import { ROUTES } from "@/lib/constants";
+import { listPublicVerifiedIncidents } from "@/lib/incidents";
+import { incidentCategory, incidentLocation, type Incident } from "@/lib/types/incident";
 
 type BadgeVariant = "default" | "success" | "warning" | "danger" | "info";
-
-type Incident = {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  location: string;
-  status: string;
-  createdAt: { toDate: () => Date } | null;
-  safesphereVerified?: boolean;
-};
 
 const STATUS_VARIANT: Record<string, BadgeVariant> = {
   open: "danger",
@@ -54,18 +44,7 @@ export function CommunityFeedContent() {
     async function fetchIncidents() {
       try {
         // Only show admin-approved public incidents.
-        // Requires a composite Firestore index on (verificationStatus, visibility, createdAt DESC).
-        const q = query(
-          collection(db, "incidents"),
-          where("verificationStatus", "==", "verified"),
-          where("visibility", "==", "public"),
-          orderBy("createdAt", "desc")
-        );
-        const snapshot = await getDocs(q);
-        const docs = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<Incident, "id">),
-        }));
+        const docs = await listPublicVerifiedIncidents();
         setIncidents(docs);
       } catch (err) {
         setError(
@@ -126,15 +105,17 @@ export function CommunityFeedContent() {
                 {incident.description}
               </p>
 
+              <IncidentImages urls={incident.imageUrls} className="mt-3" />
+
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
                 <span className="inline-flex items-center gap-1">
-                  <Badge variant="info">{incident.category}</Badge>
+                  <Badge variant="info">{incidentCategory(incident)}</Badge>
                 </span>
 
-                {incident.location && (
+                {incidentLocation(incident) !== "—" && (
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 shrink-0" />
-                    {incident.location}
+                    {incidentLocation(incident)}
                   </span>
                 )}
 

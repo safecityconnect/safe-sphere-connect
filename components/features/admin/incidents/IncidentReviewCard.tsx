@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ChevronDown, ChevronUp, MapPin } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, ImageIcon, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { incidentCategory, incidentLocation, type Incident, type VerificationStatus } from "@/lib/types/incident";
@@ -63,6 +63,13 @@ export function IncidentReviewCard({ incident, expanded, onToggle }: Props) {
               <CalendarDays className="h-3.5 w-3.5 shrink-0" />
               {formatDate(incident.createdAt)}
             </span>
+
+            {incident.imageUrls && incident.imageUrls.length > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                {incident.imageUrls.length}
+              </span>
+            )}
           </div>
         </div>
 
