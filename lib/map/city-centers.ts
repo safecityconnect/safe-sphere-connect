@@ -14,6 +14,9 @@ export const CITY_CENTERS: Record<IndianCity, LatLng> = {
 
 export const DEFAULT_MAP_ZOOM = 13;
 
+/** Geographic centroid of India, used as a map fallback when no other location is known. */
+export const INDIA_CENTER: LatLng = { lat: 20.5937, lng: 78.9629 };
+
 export function getCityCenter(city: IndianCity): LatLng {
   return CITY_CENTERS[city];
 }

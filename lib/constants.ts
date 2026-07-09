@@ -1,11 +1,11 @@
 import {
   Activity,
-  AlertTriangle,
   HeartPulse,
   LayoutDashboard,
   Map,
   MapPin,
   Shield,
+  ShieldCheck,
   User,
   Wrench,
   Siren,
@@ -24,9 +24,9 @@ export const ROUTES = {
   dashboard: "/dashboard",
   safetyMap: "/dashboard/safety-map",
   fixMyCity: "/dashboard/fix-my-city",
-  sos: "/dashboard/sos",
+  guardianMode: "/dashboard/guardian-mode",
   safeWalk: "/dashboard/safe-walk",
-  cityHealth: "/dashboard/city-health",
+  areaHealth: "/dashboard/area-health",
   profile: "/dashboard/profile",
   reportIncident: "/dashboard/report-incident",
   communityFeed: "/dashboard/community-feed",
@@ -36,6 +36,11 @@ export const ROUTES = {
   notifications: "/dashboard/notifications",
   help: "/dashboard/help",
 } as const;
+
+/** Guardian live-tracking view for a specific Safe Walk session. */
+export function safeWalkTrackRoute(walkId: string): string {
+  return `/dashboard/safe-walk/track/${walkId}`;
+}
 
 export type NavItem = {
   label: string;
@@ -48,8 +53,8 @@ export type NavItem = {
 export const BOTTOM_NAV_ITEMS: NavItem[] = [
   { label: "Home", labelKey: "dashboard", href: ROUTES.dashboard, icon: LayoutDashboard },
   { label: "Map", labelKey: "safetyMap", href: ROUTES.safetyMap, icon: Map },
-  { label: "SOS", href: ROUTES.sos, icon: AlertTriangle, highlight: true },
-  { label: "Health", labelKey: "cityHealthScore", href: ROUTES.cityHealth, icon: HeartPulse },
+  { label: "Guardian", labelKey: "guardianMode", href: ROUTES.guardianMode, icon: ShieldCheck, highlight: true },
+  { label: "Area Health", labelKey: "areaHealth", href: ROUTES.areaHealth, icon: HeartPulse },
   { label: "Profile", labelKey: "profile", href: ROUTES.profile, icon: User },
 ];
 
@@ -83,13 +88,13 @@ export const DASHBOARD_CARDS: DashboardCardItem[] = [
     color: "teal",
   },
   {
-    title: "SOS Emergency",
-    titleKey: "sosEmergency",
-    description: "One-tap 112 alert and Indian emergency helplines",
-    descKey: "sosSubtitle",
-    href: ROUTES.sos,
-    icon: AlertTriangle,
-    color: "red",
+    title: "Guardian Mode",
+    titleKey: "guardianMode",
+    description: "Share your live location with trusted guardians",
+    descKey: "guardianModeSubtitle",
+    href: ROUTES.guardianMode,
+    icon: ShieldCheck,
+    color: "blue",
   },
   {
     title: "Safe Walk Guardian",
@@ -101,10 +106,11 @@ export const DASHBOARD_CARDS: DashboardCardItem[] = [
     color: "green",
   },
   {
-    title: "City Health Score",
-    titleKey: "cityHealthScore",
-    description: "See your city's safety and wellness index",
-    href: ROUTES.cityHealth,
+    title: "Area Health",
+    titleKey: "areaHealth",
+    description: "See your area's safety and wellness index",
+    descKey: "areaHealthSubtitle",
+    href: ROUTES.areaHealth,
     icon: Activity,
     color: "purple",
   },

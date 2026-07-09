@@ -88,8 +88,8 @@ export async function markAllNotificationsAsRead(
 
 /**
  * Creates a notification for a user. Not called anywhere automatically yet —
- * this is the entry point Safe Walk, SOS, Family Linking, and Incident
- * updates will call once they're wired up to send notifications.
+ * this is the entry point Safe Walk, Guardian Mode, Family Linking, and
+ * Incident updates will call once they're wired up to send notifications.
  */
 export function formatNotificationTime(
   timestamp: AppNotification["createdAt"]

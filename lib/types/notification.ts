@@ -2,13 +2,13 @@ import type { Timestamp } from "firebase/firestore";
 
 /**
  * Notification types. Kept intentionally generic so future features
- * (Safe Walk, SOS, Family Linking, Incident updates) can reuse this
- * same infrastructure without changing the schema.
+ * (Safe Walk, Guardian Mode, Family Linking, Incident updates) can reuse
+ * this same infrastructure without changing the schema.
  */
 export type NotificationType =
   | "system"
   | "safe-walk"
-  | "sos"
+  | "guardian-mode"
   | "family"
   | "incident";
 

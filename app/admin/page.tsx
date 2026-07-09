@@ -17,7 +17,7 @@ const stats = [
 ];
 
 const recentActivity = [
-  { action: "New SOS alert — 112 dialed", user: "Priya S., Sector 22 Chandigarh", time: "2 min ago", type: "danger" as const },
+  { action: "New Guardian Mode alert — 112 dialed", user: "Priya S., Sector 22 Chandigarh", time: "2 min ago", type: "danger" as const },
   { action: "Pothole report submitted", user: "Rahul V., Mohali", time: "15 min ago", type: "info" as const },
   { action: "Women helpline referral", user: "SHE Team, Panchkula", time: "28 min ago", type: "info" as const },
   { action: "Incident resolved", user: "Inspector Mehta, Delhi", time: "45 min ago", type: "success" as const },
@@ -80,10 +80,10 @@ export default function AdminDashboardPage() {
         </Card>
 
         <Card padding="md">
-          <h2 className="mb-4 font-semibold text-foreground">City Health Overview — Chandigarh</h2>
+          <h2 className="mb-4 font-semibold text-foreground">Area Health Overview — Sector 22, Chandigarh</h2>
           <div className="flex flex-col items-center py-6">
             <p className="text-5xl font-bold text-primary">78</p>
-            <p className="mt-1 text-sm text-muted">City Health Score</p>
+            <p className="mt-1 text-sm text-muted">Area Health Score</p>
             <Badge variant="success" className="mt-3">Good Standing</Badge>
           </div>
           <div className="mt-4 space-y-3 border-t border-border pt-4">

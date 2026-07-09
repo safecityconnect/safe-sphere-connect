@@ -49,14 +49,14 @@ useEffect(() => {
         </div>
       </Card>
 
-      <Link href={ROUTES.cityHealth} className="mb-6 block">
+      <Link href={ROUTES.areaHealth} className="mb-6 block">
         <Card
           className="border-primary/20 bg-gradient-to-br from-primary to-primary-dark text-white transition-transform active:scale-[0.99]"
           padding="md"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white/80">{t.cityHealthScore}</p>
+              <p className="text-sm font-medium text-white/80">{t.areaHealth}</p>
               <p className="mt-1 text-3xl font-bold">
                 78<span className="text-lg font-normal text-white/70">/100</span>
               </p>
@@ -69,7 +69,7 @@ useEffect(() => {
             </div>
           </div>
           <p className="mt-3 text-sm text-white/70">
-            Chandigarh safety index improved by 3 points this week.
+            Your area&apos;s safety index improved by 3 points this week.
           </p>
         </Card>
       </Link>

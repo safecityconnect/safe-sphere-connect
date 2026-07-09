@@ -42,10 +42,8 @@ export function BottomNav() {
               >
                 <div
                   className={cn(
-                    "flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform active:scale-95",
-                    isActive
-                      ? "bg-danger ring-4 ring-danger/20"
-                      : "bg-danger hover:bg-red-600"
+                    "flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent shadow-lg transition-transform active:scale-95",
+                    isActive && "ring-4 ring-primary/20"
                   )}
                 >
                   <Icon className="h-6 w-6 text-white" strokeWidth={2.5} />
@@ -53,7 +51,7 @@ export function BottomNav() {
                 <span
                   className={cn(
                     "text-[10px] font-semibold",
-                    isActive ? "text-danger" : "text-muted"
+                    isActive ? "text-primary" : "text-muted"
                   )}
                 >
                   {label}

@@ -8,19 +8,21 @@ export type TranslationKeys = {
   goodMorning: string;
   dashboard: string;
   quickAccess: string;
-  cityHealthScore: string;
+  areaHealth: string;
+  areaHealthSubtitle: string;
+  areaSafetyScore: string;
   good: string;
   aboveAverage: string;
-  cityImproved: string;
+  areaImproved: string;
   nationalAvg: string;
-  cityRank: string;
-  neighbors: string;
+  areaRank: string;
+  coveredAreas: string;
   safetyMap: string;
   safetyMapSubtitle: string;
   fixMyCity: string;
   fixMyCitySubtitle: string;
-  sosEmergency: string;
-  sosSubtitle: string;
+  guardianMode: string;
+  guardianModeSubtitle: string;
   safeWalk: string;
   safeWalkSubtitle: string;
   profile: string;
@@ -36,12 +38,12 @@ export type TranslationKeys = {
   verified: string;
   holdToAlert: string;
   keepHolding: string;
-  alertSent: string;
+  guardianModeActive: string;
   locationShared: string;
   call112: string;
   call112Desc: string;
   emergencyServices: string;
-  emergencyContacts: string;
+  guardians: string;
   liveLocation: string;
   medicalInfo: string;
   shareLocation: string;
@@ -81,8 +83,7 @@ export type TranslationKeys = {
   noActivity: string;
   noActivityDesc: string;
   womenSafety: string;
-  oneTapSOS: string;
-  cityHealthScoreSubtitle: string;
+  activateGuardianMode: string;
 };
 
 export const LOCALE_LABELS: Record<Locale, string> = {

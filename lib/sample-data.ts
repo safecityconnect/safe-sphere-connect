@@ -47,7 +47,7 @@ export type CivicReport = {
   description: string;
 };
 
-export type EmergencyContact = {
+export type GuardianContact = {
   id: string;
   name: string;
   relationship: string;
@@ -121,16 +121,16 @@ export type NightSafetyAlert = {
   activeAfter: string;
 };
 
-export type EmergencyEventType =
-  | "sos_triggered"
+export type GuardianModeEventType =
+  | "guardian_mode_activated"
   | "location_shared"
   | "contact_notified"
   | "audio_recorded"
   | "call_initiated";
 
-export type EmergencyEvent = {
+export type GuardianModeEvent = {
   id: string;
-  type: EmergencyEventType;
+  type: GuardianModeEventType;
   timestamp: string;
   detail: string;
 };
@@ -356,7 +356,7 @@ export const CIVIC_REPORTS: CivicReport[] = [
   },
 ];
 
-export const EMERGENCY_CONTACTS: EmergencyContact[] = [
+export const GUARDIAN_MODE_CONTACTS: GuardianContact[] = [
   {
     id: "1",
     name: "Sunita Sharma",

@@ -164,7 +164,7 @@ export default function RegisterPage() {
                 </h2>
                 <p className="mt-2 text-sm text-muted">
                   Connect with family to enable shared safety features, arrival
-                  alerts, and SOS escalation.
+                  alerts, and Guardian Mode coordination.
                 </p>
               </div>
 

@@ -34,9 +34,9 @@ const FAQ_ITEMS: FaqItem[] = [
       "Go to 'Family Safety' in the Profile settings menu. Generate a unique invite code and share it with your family member. They enter the code during registration or from their Family Safety page.",
   },
   {
-    question: "What does the City Health Score mean?",
+    question: "What does Area Health mean?",
     answer:
-      "The City Health Score is an aggregate safety index for your city based on incident frequency, response times, and community feedback. A higher score means a safer environment.",
+      "Area Health is an aggregate safety index for your area based on incident frequency, response times, and community feedback. A higher score means a safer environment.",
   },
   {
     question: "How do I change my app language?",

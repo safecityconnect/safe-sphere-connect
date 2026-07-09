@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import {
-  AlertTriangle,
   MapPin,
   Phone,
   Shield,
+  ShieldCheck,
   Users,
   Wrench,
   User,
@@ -32,9 +32,9 @@ const featureKeys = [
     descKey: "fixMyCitySubtitle" as const,
   },
   {
-    icon: AlertTriangle,
-    titleKey: "sosEmergency" as const,
-    descKey: "oneTapSOS" as const,
+    icon: ShieldCheck,
+    titleKey: "guardianMode" as const,
+    descKey: "guardianModeSubtitle" as const,
   },
   {
     icon: Shield,
@@ -43,8 +43,8 @@ const featureKeys = [
   },
   {
     icon: Users,
-    titleKey: "cityHealthScore" as const,
-    descKey: "cityHealthScoreSubtitle" as const,
+    titleKey: "areaHealth" as const,
+    descKey: "areaHealthSubtitle" as const,
   },
 ];
 
@@ -156,7 +156,7 @@ export function LandingContent() {
               {t.everythingYouNeed}
               </h2>
               <p className="mt-2 text-muted">
-              Women Safety • Emergency Response • Civic Reporting • Community Protection
+              Women Safety • Guardian Mode • Civic Reporting • Community Protection
               </p>
             </div>
             <div className="mt-10 grid gap-6 sm:grid-cols-2">
@@ -165,17 +165,17 @@ export function LandingContent() {
                 return (
                   <Link
   key={feature.titleKey}
-  href={
+                  href={
     feature.titleKey === "safetyMap"
       ? "/dashboard/safety-map"
       : feature.titleKey === "fixMyCity"
       ? "/dashboard/fix-my-city"
-      : feature.titleKey === "sosEmergency"
-      ? "/dashboard/sos"
+      : feature.titleKey === "guardianMode"
+      ? "/dashboard/guardian-mode"
       : feature.titleKey === "safeWalk"
       ? "/dashboard/safe-walk"
-      : feature.titleKey === "cityHealthScore"
-      ? "/dashboard/city-health"
+      : feature.titleKey === "areaHealth"
+      ? "/dashboard/area-health"
       : "/dashboard"
   }
   className="block rounded-2xl border border-border bg-surface p-6 shadow-sm transition-shadow hover:shadow-md hover:scale-[1.02] cursor-pointer"

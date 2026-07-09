@@ -19,7 +19,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { useSimulatedLoading } from "@/hooks/useSimulatedLoading";
 import { ROUTES } from "@/lib/constants";
-import { HEALTH_METRICS, HEALTH_TREND } from "@/lib/sample-data";
+import { HEALTH_METRICS, HEALTH_TREND, LIVE_LOCATION } from "@/lib/sample-data";
 import { cn } from "@/lib/utils";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -105,14 +105,14 @@ function TrendChart() {
   );
 }
 
-export function CityHealthContent() {
+export function AreaHealthContent() {
   const { t } = useLocale();
   const isLoading = useSimulatedLoading();
 
   if (isLoading) {
     return (
       <PageContainer withBottomNav>
-        <PageHeader title={t.cityHealthScore} subtitle={t.loading} backHref={ROUTES.dashboard} />
+        <PageHeader title={t.areaHealth} subtitle={t.loading} backHref={ROUTES.dashboard} />
         <Skeleton className="mx-auto mb-6 h-40 w-40 rounded-full" />
         <div className="flex flex-col gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -126,22 +126,23 @@ export function CityHealthContent() {
   return (
     <PageContainer withBottomNav>
       <PageHeader
-        title={t.cityHealthScore}
-        subtitle="Your city's safety and wellness index"
+        title={t.areaHealth}
+        subtitle={t.areaHealthSubtitle}
         backHref={ROUTES.dashboard}
       />
 
       <Card className="mb-6 text-center" padding="lg">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">{t.areaSafetyScore}</h2>
         <ScoreRing score={OVERALL_SCORE} />
         <Badge variant="success" className="mt-4">
           {t.aboveAverage}
         </Badge>
-        <p className="mt-3 text-sm text-muted">{t.cityImproved}</p>
+        <p className="mt-3 text-sm text-muted">{t.areaImproved}</p>
         <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4">
           {[
-            { label: t.cityRank, value: "#8" },
+            { label: t.areaRank, value: "#8" },
             { label: t.nationalAvg, value: "74" },
-            { label: t.neighbors, value: "7" },
+            { label: t.coveredAreas, value: "7" },
           ].map((item) => (
             <div key={item.label}>
               <p className="text-lg font-bold text-foreground">{item.value}</p>
@@ -153,7 +154,7 @@ export function CityHealthContent() {
 
       <Card className="mb-6" padding="md">
         <h2 className="mb-1 text-sm font-semibold text-foreground">6-Month Trend</h2>
-        <p className="mb-2 text-xs text-muted">Overall city health score — Chandigarh</p>
+        <p className="mb-2 text-xs text-muted">Overall area health score — {LIVE_LOCATION.area}</p>
         <TrendChart />
       </Card>
 
@@ -202,7 +203,7 @@ export function CityHealthContent() {
 
       <Card padding="sm" className="mt-6 bg-primary-light/30">
         <p className="text-xs text-muted">
-          Scores are calculated from citizen reports, municipal data, and public safety records across Indian cities. Updated weekly.
+          Scores are calculated from citizen reports, municipal data, and public safety records across your area. Updated weekly.
         </p>
       </Card>
     </PageContainer>

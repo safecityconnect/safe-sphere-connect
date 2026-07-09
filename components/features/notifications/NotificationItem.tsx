@@ -4,7 +4,7 @@ import {
   AlertTriangle,
   Bell,
   Footprints,
-  Siren,
+  ShieldCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -15,7 +15,7 @@ import type { AppNotification, NotificationType } from "@/lib/types/notification
 const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   system: Bell,
   "safe-walk": Footprints,
-  sos: Siren,
+  "guardian-mode": ShieldCheck,
   family: Users,
   incident: AlertTriangle,
 };
@@ -23,7 +23,7 @@ const TYPE_ICON: Record<NotificationType, LucideIcon> = {
 const TYPE_STYLES: Record<NotificationType, string> = {
   system: "bg-slate-100 text-slate-600",
   "safe-walk": "bg-accent-light text-emerald-700",
-  sos: "bg-danger-light text-red-700",
+  "guardian-mode": "bg-primary-light text-primary-dark",
   family: "bg-primary-light text-primary-dark",
   incident: "bg-amber-100 text-amber-700",
 };
