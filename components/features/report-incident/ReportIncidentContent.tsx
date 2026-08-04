@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle, FileText, MapPin, Plus, Shield } from "lucide-react";
+import { AlertTriangle, CheckCircle, FileText, MapPin, Plus } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -10,17 +10,9 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ROUTES } from "@/lib/constants";
 import { auth, db } from "@/lib/firebase";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { DEFAULT_CITY, INDIAN_CITIES } from "@/lib/sample-data";
 import { getCityCenter, type LatLng } from "@/lib/map/city-centers";
-import {
-  ACCEPTED_IMAGE_TYPES,
-  MAX_IMAGE_SIZE_BYTES,
-  MAX_INCIDENT_IMAGES,
-  uploadIncidentImages,
-} from "@/lib/image-upload";
 import { LocationPickerModal } from "./LocationPickerModal";
-import { ImageUploadField, type PendingImage } from "./ImageUploadField";
 
 const INCIDENT_CATEGORIES = [
   "Theft / Snatching",
@@ -61,9 +53,7 @@ function resolveInitialMapCenter(cityText: string): LatLng {
 }
 
 export function ReportIncidentContent() {
-  const { isAdmin } = useIsAdmin();
   const [form, setForm] = useState<FormState>(initialForm);
-  const [safesphereVerified, setSafesphereVerified] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -72,10 +62,6 @@ export function ReportIncidentContent() {
   const [locationSource, setLocationSource] = useState<LocationSource>(null);
   const [coords, setCoords] = useState<LatLng | null>(null);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
-
-  const [images, setImages] = useState<PendingImage[]>([]);
-  const [imageError, setImageError] = useState<string | null>(null);
-  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -103,44 +89,6 @@ export function ReportIncidentContent() {
     setShowLocationPicker(false);
   };
 
-  const handleAddImages = (files: File[]) => {
-    setImageError(null);
-    const accepted: PendingImage[] = [];
-    for (const file of files) {
-      if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-        setImageError("Only JPG, PNG, or WEBP images are allowed.");
-        continue;
-      }
-      if (file.size > MAX_IMAGE_SIZE_BYTES) {
-        setImageError(
-          `Each photo must be smaller than ${Math.round(MAX_IMAGE_SIZE_BYTES / (1024 * 1024))}MB.`
-        );
-        continue;
-      }
-      accepted.push({ file, previewUrl: URL.createObjectURL(file) });
-    }
-
-    setImages((prev) => {
-      const combined = [...prev, ...accepted];
-      if (combined.length > MAX_INCIDENT_IMAGES) {
-        setImageError(`You can attach up to ${MAX_INCIDENT_IMAGES} photos.`);
-      }
-      const kept = combined.slice(0, MAX_INCIDENT_IMAGES);
-      // Revoke previews for any images dropped due to the max-count limit.
-      combined.slice(MAX_INCIDENT_IMAGES).forEach((img) => URL.revokeObjectURL(img.previewUrl));
-      return kept;
-    });
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setImages((prev) => {
-      const target = prev[index];
-      if (target) URL.revokeObjectURL(target.previewUrl);
-      return prev.filter((_, i) => i !== index);
-    });
-    setImageError(null);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = auth.currentUser;
@@ -152,21 +100,6 @@ export function ReportIncidentContent() {
     setSubmitError(null);
     setSubmitSuccess(false);
     try {
-      const isVerifiedPublish = isAdmin && safesphereVerified;
-
-      let imageUrls: string[] = [];
-      if (images.length > 0) {
-        setIsUploadingImages(true);
-        try {
-          imageUrls = await uploadIncidentImages(
-            images.map((img) => img.file),
-            user.uid
-          );
-        } finally {
-          setIsUploadingImages(false);
-        }
-      }
-
       await addDoc(collection(db, "incidents"), {
         title: form.title,
         description: form.description,
@@ -182,22 +115,17 @@ export function ReportIncidentContent() {
           : {}),
         severity: "medium",
         markerType: "incident",
-        // SafeSphere Verified reports bypass the moderation queue and are
-        // published immediately; all other reports follow the normal workflow.
-        safesphereVerified: isVerifiedPublish,
-        verificationStatus: isVerifiedPublish ? "verified" : "pending",
-        visibility: isVerifiedPublish ? "public" : "pending",
+        // Citizen reports always enter the moderation queue.
+        safesphereVerified: false,
+        verificationStatus: "pending",
+        visibility: "pending",
         userId: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         status: "open",
-        ...(imageUrls.length > 0 ? { imageUrls } : {}),
       });
       setSubmitSuccess(true);
       setForm(initialForm);
-      setSafesphereVerified(false);
-      images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-      setImages([]);
       setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (err) {
       setSubmitError(
@@ -320,14 +248,6 @@ export function ReportIncidentContent() {
             )}
           </div>
 
-          <ImageUploadField
-            images={images}
-            onAdd={handleAddImages}
-            onRemove={handleRemoveImage}
-            disabled={isSubmitting}
-            error={imageError}
-          />
-
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-foreground">Description</label>
             <textarea
@@ -339,27 +259,6 @@ export function ReportIncidentContent() {
               disabled={isSubmitting}
             />
           </div>
-
-          {isAdmin && (
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
-                checked={safesphereVerified}
-                onChange={(e) => setSafesphereVerified(e.target.checked)}
-                disabled={isSubmitting}
-              />
-              <span className="flex flex-col gap-0.5">
-                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-800">
-                  <Shield className="h-3.5 w-3.5 shrink-0" />
-                  Publish as SafeSphere Verified
-                </span>
-                <span className="text-xs text-blue-600">
-                  Report will be published immediately and displayed with the SafeSphere Verified badge.
-                </span>
-              </span>
-            </label>
-          )}
 
           {submitError && (
             <p className="rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">
@@ -376,7 +275,7 @@ export function ReportIncidentContent() {
 
           <Button type="submit" fullWidth disabled={isSubmitting}>
             {isSubmitting ? (
-              isUploadingImages ? "Uploading photos…" : "Submitting…"
+              "Submitting…"
             ) : (
               <>
                 <Plus className="h-4 w-4" />
