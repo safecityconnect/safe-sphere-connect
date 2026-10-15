@@ -19,6 +19,27 @@ export type RouteSafetyCandidate = {
   sectorHints?: string[];
 };
 
+/**
+ * Where a route's safety score comes from:
+ * - "nearby-reports": verified Area Health sectors within range of the route.
+ * - "citywide-fallback": no verified sector near the route, so `safetyScore`
+ *   is the citywide average. The route's own safety is unknown.
+ * - "no-reports": there are no verified reports anywhere yet.
+ */
+export type ScoreBasis = "nearby-reports" | "citywide-fallback" | "no-reports";
+
+export type NearbySector = {
+  key: string;
+  sector: string;
+  city: string;
+  score: number;
+  riskLevel: SafetyRiskLevel;
+  /** Closest distance from the route path, or null when matched only by address text. */
+  distanceMeters: number | null;
+  incidentCount: number;
+  infrastructureReportCount: number;
+};
+
 export type SafeRouteRecommendation = {
   candidateId: string;
   safetyScore: number;
@@ -26,7 +47,13 @@ export type SafeRouteRecommendation = {
   distanceText: string;
   durationText: string;
   sectorKeys: string[];
+  /** True only when verified reports exist near this route (scoreBasis "nearby-reports"). */
   hasSafetyData: boolean;
+  scoreBasis: ScoreBasis;
+  /** Up to three sectors that influenced the score, nearest first. */
+  nearbySectors: NearbySector[];
+  /** Plain-language statement of the data behind this route's score. */
+  evidence: string;
   explanation: string;
 };
 
@@ -38,6 +65,7 @@ export type RouteComparisonRow = {
   durationText: string;
   safetyScore: number;
   riskLevel: SafetyRiskLevel;
+  scoreBasis: ScoreBasis;
   eligible: boolean;
   ineligibleReason: string | null;
   isSelected: boolean;
@@ -63,6 +91,7 @@ const MAX_SAFE_DETOUR_DURATION_RATIO = 1.4;
 /** 10% extra distance/time costs about 2.2 safety points. */
 const DETOUR_PENALTY_PER_FULL_RATIO = 22;
 const MARGINAL_SAFETY_POINTS = 3;
+const MAX_EVIDENCE_SECTORS = 3;
 
 function nearestPathDistance(sector: SectorHealth, path: GeoPoint[]): number | null {
   if (sector.latitude === undefined || sector.longitude === undefined) return null;
@@ -100,24 +129,48 @@ export function evaluateRouteSafety(
 ): SafeRouteRecommendation {
   const normalizedHints = candidate.sectorHints?.map((hint) => hint.toLowerCase()) ?? [];
   const nearby = areaHealth.sectors
-    .map((sector) => ({
-      sector,
-      distance: normalizedHints.some(
+    .map((sector) => {
+      const matchedByAddress = normalizedHints.some(
         (hint) =>
           hint.includes(sector.sector.toLowerCase()) &&
           hint.includes(sector.city.toLowerCase())
-      )
-        ? 250
-        : nearestPathDistance(sector, candidate.path),
-    }))
+      );
+      return {
+        sector,
+        matchedByAddress,
+        distance: matchedByAddress ? 250 : nearestPathDistance(sector, candidate.path),
+      };
+    })
     .filter(
       (
         item
       ): item is {
         sector: SectorHealth;
+        matchedByAddress: boolean;
         distance: number;
       } => item.distance !== null && item.distance <= SECTOR_ROUTE_RADIUS_METERS
     );
+
+  const scoreBasis: ScoreBasis =
+    areaHealth.reportCount === 0
+      ? "no-reports"
+      : nearby.length > 0
+        ? "nearby-reports"
+        : "citywide-fallback";
+
+  const nearbySectors: NearbySector[] = [...nearby]
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, MAX_EVIDENCE_SECTORS)
+    .map((item) => ({
+      key: item.sector.key,
+      sector: item.sector.sector,
+      city: item.sector.city,
+      score: item.sector.score,
+      riskLevel: item.sector.riskLevel,
+      distanceMeters: item.matchedByAddress ? null : Math.round(item.distance),
+      incidentCount: item.sector.incidentCount,
+      infrastructureReportCount: item.sector.infrastructureReportCount,
+    }));
 
   const totalWeight = nearby.reduce(
     (sum, item) => sum + 1 / Math.max(250, item.distance),
@@ -142,6 +195,8 @@ export function evaluateRouteSafety(
     .map((item) => `${item.sector.sector} (${item.sector.score})`)
     .join(", ");
 
+  const evidence = describeEvidence(scoreBasis, nearbySectors);
+
   return {
     candidateId: candidate.id,
     safetyScore,
@@ -149,14 +204,48 @@ export function evaluateRouteSafety(
     distanceText: candidate.distanceText,
     durationText: candidate.durationText,
     sectorKeys: nearby.map((item) => item.sector.key),
-    hasSafetyData: areaHealth.reportCount > 0,
+    hasSafetyData: scoreBasis === "nearby-reports",
+    scoreBasis,
+    nearbySectors,
+    evidence,
     explanation:
-      areaHealth.reportCount > 0
+      scoreBasis === "nearby-reports"
         ? alongLabel
           ? `Rates this route using Area Health scores along ${alongLabel}.`
-          : "Rates this route using recent reported incidents and higher-rated sectors."
-        : "No verified Area Health reports are available for this route yet.",
+          : "Rates this route using verified reports within 2.5 km of its path."
+        : evidence,
   };
+}
+
+function reportCountLabel(sector: NearbySector): string {
+  const parts = [
+    sector.incidentCount > 0
+      ? `${sector.incidentCount} incident${sector.incidentCount === 1 ? "" : "s"}`
+      : null,
+    sector.infrastructureReportCount > 0
+      ? `${sector.infrastructureReportCount} civic report${
+          sector.infrastructureReportCount === 1 ? "" : "s"
+        }`
+      : null,
+  ].filter((part): part is string => part !== null);
+  return parts.join(" and ") || "verified reports";
+}
+
+function describeEvidence(scoreBasis: ScoreBasis, sectors: NearbySector[]): string {
+  if (scoreBasis === "no-reports") {
+    return "No verified reports are available yet, so this route's safety is unknown.";
+  }
+  if (scoreBasis === "citywide-fallback") {
+    return "No verified reports within 2.5 km of this route, so its safety is unknown. This does not mean the area is safe.";
+  }
+  const details = sectors.map((sector) => {
+    const where =
+      sector.distanceMeters === null
+        ? "matched by destination address"
+        : `${(sector.distanceMeters / 1000).toFixed(1)} km from route`;
+    return `${sector.sector}, ${sector.city}: ${sector.score}/100 (${reportCountLabel(sector)}, ${where})`;
+  });
+  return `Based on verified app reports near this route: ${details.join("; ")}.`;
 }
 
 export function rankRouteCandidates(
@@ -219,7 +308,8 @@ function buildSelectionReason(params: {
   fastestCandidate: RouteSafetyCandidate;
   saferButIneligible: RouteComparisonRow[];
   avoided: SectorHealth[];
-  hasSafetyData: boolean;
+  /** Candidates whose safety is unknown (no verified reports near them). */
+  unknownCount: number;
 }): string {
   const {
     candidateCount,
@@ -229,18 +319,28 @@ function buildSelectionReason(params: {
     fastestCandidate,
     saferButIneligible,
     avoided,
-    hasSafetyData,
+    unknownCount,
   } = params;
 
   if (candidateCount <= 1) {
-    return hasSafetyData
-      ? "Google returned one walking route. It is scored with Area Health data along its actual path."
-      : "Google returned one walking route. No verified Area Health reports are available yet.";
+    if (selected.scoreBasis === "nearby-reports") {
+      return "Google returned one walking route. It is scored with verified reports near its actual path.";
+    }
+    return selected.scoreBasis === "no-reports"
+      ? "Google returned one walking route. No verified Area Health reports are available yet."
+      : "Google returned one walking route. No verified reports are near it, so its safety is unknown.";
   }
 
-  if (!hasSafetyData) {
+  if (selected.scoreBasis === "no-reports") {
     return "Compared Google walking alternatives, but no verified Area Health reports are available yet, so the fastest route is recommended.";
   }
+
+  if (unknownCount === candidateCount) {
+    return `Compared ${candidateCount} Google walking routes. None pass near verified reports, so their safety is unknown and they were compared on distance and time only.`;
+  }
+
+  const selectedKnown = selected.scoreBasis === "nearby-reports";
+  const fastestKnown = fastest.scoreBasis === "nearby-reports";
 
   const extraDistance = extraPercent(
     selectedCandidate.distanceMeters,
@@ -261,6 +361,14 @@ function buildSelectionReason(params: {
       const safer = saferButIneligible[0];
       return `Compared ${candidateCount} Google walking routes. A safer option scored ${safer.safetyScore}/100 but was not used because the extra distance/time is too large.`;
     }
+    if (!selectedKnown) {
+      return `Compared ${candidateCount} Google walking routes. The fastest route is recommended, but no verified reports are near it, so its safety is unknown.`;
+    }
+    if (unknownCount > 0) {
+      return `Compared ${candidateCount} Google walking routes. The fastest route is recommended. ${unknownCount} of the alternatives ${
+        unknownCount === 1 ? "has" : "have"
+      } no verified reports nearby, so ${unknownCount === 1 ? "its" : "their"} safety is unknown.`;
+    }
     if (Math.abs(safetyDelta) <= MARGINAL_SAFETY_POINTS) {
       return `Compared ${candidateCount} Google walking routes. Safety is similar across reasonable options, so the fastest walking route is recommended.`;
     }
@@ -275,6 +383,18 @@ function buildSelectionReason(params: {
   const avoidText = avoidedLabel
     ? ` Its geometry stays farther from ${avoidedLabel} than the fastest route.`
     : "";
+
+  if (!selectedKnown && fastestKnown) {
+    const passed = fastest.nearbySectors[0];
+    const passedLabel = passed ? ` near ${passed.sector} (${passed.score}/100)` : "";
+    return `Selected over the fastest walking route, which passes${passedLabel}, ${detourText}. No verified reports are near this route, so its safety is unknown.${avoidText}`;
+  }
+  if (!selectedKnown && !fastestKnown) {
+    return `Selected over the fastest walking route ${detourText}. Neither route has verified reports nearby, so their safety is unknown.${avoidText}`;
+  }
+  if (selectedKnown && !fastestKnown) {
+    return `Selected over the fastest walking route ${detourText}. This route scores ${selected.safetyScore}/100 from verified reports nearby; the fastest route has no verified reports nearby, so its safety is unknown.${avoidText}`;
+  }
 
   return `Selected over the fastest walking route because safety is ${selected.safetyScore}/100 vs ${fastest.safetyScore}/100 (${safetyDelta >= 0 ? "+" : ""}${safetyDelta} points) ${detourText}.${avoidText}`;
 }
@@ -327,6 +447,7 @@ export function selectSafestReasonableRoute(
       durationText: entry.candidate.durationText,
       safetyScore: entry.recommendation.safetyScore,
       riskLevel: entry.recommendation.riskLevel,
+      scoreBasis: entry.recommendation.scoreBasis,
       eligible: reason === null,
       ineligibleReason: reason,
       isSelected: false,
@@ -360,9 +481,11 @@ export function selectSafestReasonableRoute(
     fastestEntry.candidate.path,
     areaHealth.sectors
   );
+  // Only routes with nearby verified reports can be called "safer".
   const saferButIneligible = comparisons.filter(
     (row) =>
       !row.eligible &&
+      row.scoreBasis === "nearby-reports" &&
       row.safetyScore > winner.recommendation.safetyScore + MARGINAL_SAFETY_POINTS
   );
   const reason = buildSelectionReason({
@@ -373,7 +496,7 @@ export function selectSafestReasonableRoute(
     fastestCandidate: fastestEntry.candidate,
     saferButIneligible,
     avoided,
-    hasSafetyData: winner.recommendation.hasSafetyData,
+    unknownCount: rows.filter((row) => row.scoreBasis !== "nearby-reports").length,
   });
 
   return {
@@ -396,7 +519,11 @@ export function formatRouteSelectionDebug(selection: SafeRouteSelection): string
         row.isFastest ? "FASTEST" : null,
         row.eligible ? null : row.ineligibleReason,
       ].filter((tag): tag is string => Boolean(tag));
-      return `  ${row.candidateId}  ${row.distanceText}  ${row.durationText}  safety ${row.safetyScore}/100  ${tags.join(" · ")}`;
+      const safety =
+        row.scoreBasis === "nearby-reports"
+          ? `safety ${row.safetyScore}/100`
+          : `safety unknown (${row.scoreBasis}, ranked as ${row.safetyScore})`;
+      return `  ${row.candidateId}  ${row.distanceText}  ${row.durationText}  ${safety}  ${tags.join(" · ")}`;
     }),
     `[Safe Route] selected: ${selection.selected.candidateId}`,
     `[Safe Route] why: ${selection.reason}`,
