@@ -142,6 +142,19 @@ export function FixMyCityContent() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    const missingFields = [
+      ["Issue Title", form.title],
+      ["Location", form.locationText],
+      ["Description", form.description],
+    ]
+      .filter(([, value]) => !value.trim())
+      .map(([label]) => label);
+    if (missingFields.length > 0) {
+      setSubmitSuccess(false);
+      setError(`Please fill in: ${missingFields.join(", ")}.`);
+      return;
+    }
+
     await auth.authStateReady();
     const user = auth.currentUser;
     if (!user) {
@@ -234,7 +247,7 @@ export function FixMyCityContent() {
         ))}
       </div>
 
-      {error && (
+      {error && !showForm && (
         <p className="mb-4 rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">
           {error}
         </p>
@@ -253,7 +266,7 @@ export function FixMyCityContent() {
           <p className="mt-1 text-sm text-muted">
             Describe the issue and we&apos;ll route it to the right department.
           </p>
-          <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit}>
+          <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
             <Input
               label="Issue Title"
               placeholder="e.g. Broken streetlight"
@@ -322,12 +335,20 @@ export function FixMyCityContent() {
                 disabled={isSubmitting}
               />
             </div>
+            {error && (
+              <p role="alert" className="rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">
+                {error}
+              </p>
+            )}
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
                 fullWidth
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setError(null);
+                }}
                 disabled={isSubmitting}
               >
                 Cancel
