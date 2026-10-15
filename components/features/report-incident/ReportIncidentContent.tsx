@@ -92,6 +92,20 @@ export function ReportIncidentContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const missingFields = [
+      ["Incident Title", form.title],
+      ["Location", form.location],
+      ["City", form.city],
+      ["Description", form.description],
+    ]
+      .filter(([, value]) => !value.trim())
+      .map(([label]) => label);
+    if (missingFields.length > 0) {
+      setSubmitSuccess(false);
+      setSubmitError(`Please fill in: ${missingFields.join(", ")}.`);
+      return;
+    }
+
     // Wait for Auth restoration before reading currentUser — avoids a false
     // null early-return while IndexedDB persistence is still hydrating.
     await auth.authStateReady();
@@ -160,7 +174,7 @@ export function ReportIncidentContent() {
           </div>
         </div>
 
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
           <Input
             label="Incident Title"
             placeholder="e.g. Phone snatching near Sector 17"
@@ -266,7 +280,7 @@ export function ReportIncidentContent() {
           </div>
 
           {submitError && (
-            <p className="rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">
+            <p role="alert" className="rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">
               {submitError}
             </p>
           )}
