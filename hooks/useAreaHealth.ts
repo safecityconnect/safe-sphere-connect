@@ -13,6 +13,40 @@ import {
 
 const EMPTY_SNAPSHOT = calculateAreaHealth([]);
 
+async function loadAreaHealth(): Promise<{
+  snapshot: AreaHealthSnapshot;
+  error: string | null;
+}> {
+  const [incidentsResult, infrastructureResult] = await Promise.allSettled([
+    listPublicVerifiedIncidents(),
+    listPublicVerifiedInfrastructureReports(),
+  ]);
+
+  const incidents = incidentsResult.status === "fulfilled" ? incidentsResult.value : [];
+  const infrastructureReports =
+    infrastructureResult.status === "fulfilled" ? infrastructureResult.value : [];
+
+  let error: string | null = null;
+  if (
+    incidentsResult.status === "rejected" &&
+    infrastructureResult.status === "rejected"
+  ) {
+    error = "Area Health data could not be loaded.";
+  } else if (
+    incidentsResult.status === "rejected" ||
+    infrastructureResult.status === "rejected"
+  ) {
+    error = "Some Area Health data is temporarily unavailable.";
+  }
+
+  return {
+    snapshot: calculateAreaHealth(
+      normalizeAreaHealthReports(incidents, infrastructureReports)
+    ),
+    error,
+  };
+}
+
 export function useAreaHealth() {
   const [snapshot, setSnapshot] = useState<AreaHealthSnapshot>(EMPTY_SNAPSHOT);
   const [loading, setLoading] = useState(true);
@@ -24,49 +58,31 @@ export function useAreaHealth() {
     []
   );
 
-  const refresh = useCallback(async () => {
-    // Keep state updates asynchronous when refresh is triggered from an
-    // effect; this also lets Firebase finish restoring auth first.
-    await Promise.resolve();
-    if (!userId) {
-      if (userId === null) setLoading(false);
-      return;
-    }
+  useEffect(() => {
+    // Wait for Firebase to finish restoring auth; signed-out users get the
+    // empty snapshot (see the `loading` value returned below).
+    if (!userId) return;
+    let cancelled = false;
+    loadAreaHealth().then((result) => {
+      if (cancelled) return;
+      setSnapshot(result.snapshot);
+      setError(result.error);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
+  const refresh = useCallback(async () => {
+    if (!userId) return;
     setLoading(true);
     setError(null);
-    const [incidentsResult, infrastructureResult] = await Promise.allSettled([
-      listPublicVerifiedIncidents(),
-      listPublicVerifiedInfrastructureReports(),
-    ]);
-
-    const incidents = incidentsResult.status === "fulfilled" ? incidentsResult.value : [];
-    const infrastructureReports =
-      infrastructureResult.status === "fulfilled" ? infrastructureResult.value : [];
-
-    if (
-      incidentsResult.status === "rejected" &&
-      infrastructureResult.status === "rejected"
-    ) {
-      setError("Area Health data could not be loaded.");
-    } else if (
-      incidentsResult.status === "rejected" ||
-      infrastructureResult.status === "rejected"
-    ) {
-      setError("Some Area Health data is temporarily unavailable.");
-    }
-
-    setSnapshot(
-      calculateAreaHealth(
-        normalizeAreaHealthReports(incidents, infrastructureReports)
-      )
-    );
+    const result = await loadAreaHealth();
+    setSnapshot(result.snapshot);
+    setError(result.error);
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  return { snapshot, loading, error, refresh };
+  return { snapshot, loading: userId === null ? false : loading, error, refresh };
 }

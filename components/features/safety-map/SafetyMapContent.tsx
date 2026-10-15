@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle,
@@ -148,38 +148,38 @@ export function SafetyMapContent() {
   const [error, setError] = useState<string | null>(null);
   const listItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  const fetchMapReports = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const [incidentsResult, infrastructureResult] = await Promise.allSettled([
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled([
       listPublicVerifiedIncidents(),
       listPublicVerifiedInfrastructureReports(),
-    ]);
+    ]).then(([incidentsResult, infrastructureResult]) => {
+      if (cancelled) return;
 
-    setIncidents(
-      incidentsResult.status === "fulfilled" ? incidentsResult.value : []
-    );
-    setInfrastructureReports(
-      infrastructureResult.status === "fulfilled" ? infrastructureResult.value : []
-    );
+      setIncidents(
+        incidentsResult.status === "fulfilled" ? incidentsResult.value : []
+      );
+      setInfrastructureReports(
+        infrastructureResult.status === "fulfilled" ? infrastructureResult.value : []
+      );
 
-    if (
-      incidentsResult.status === "rejected" &&
-      infrastructureResult.status === "rejected"
-    ) {
-      setError("Failed to load map reports.");
-    } else if (
-      incidentsResult.status === "rejected" ||
-      infrastructureResult.status === "rejected"
-    ) {
-      setError("Some map reports are temporarily unavailable.");
-    }
-    setLoading(false);
+      if (
+        incidentsResult.status === "rejected" &&
+        infrastructureResult.status === "rejected"
+      ) {
+        setError("Failed to load map reports.");
+      } else if (
+        incidentsResult.status === "rejected" ||
+        infrastructureResult.status === "rejected"
+      ) {
+        setError("Some map reports are temporarily unavailable.");
+      }
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  useEffect(() => {
-    fetchMapReports();
-  }, [fetchMapReports]);
 
   const cityFilters = useMemo(
     () => INDIAN_CITIES.map((c) => ({ id: c, label: c })),

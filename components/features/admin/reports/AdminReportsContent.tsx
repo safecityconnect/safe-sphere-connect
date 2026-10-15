@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Wrench } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterChips } from "@/components/ui/FilterChips";
@@ -29,25 +29,35 @@ export function AdminReportsContent() {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const fetchTab = useCallback(async (status: Tab) => {
+  useEffect(() => {
+    // Ignore results from a tab the admin has already switched away from.
+    let cancelled = false;
+    listInfrastructureReportsByVerificationStatus(tab)
+      .then((results) => {
+        if (!cancelled) setReports(results);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load civic reports.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+
+  function handleTabChange(next: Tab) {
+    if (next === tab) return;
+    setTab(next);
     setLoading(true);
     setError(null);
     setExpandedId(null);
-    try {
-      const results = await listInfrastructureReportsByVerificationStatus(status);
-      setReports(results);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load civic reports.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  }
 
-  useEffect(() => {
-    fetchTab(tab);
-  }, [tab, fetchTab]);
-
-  function handleReviewed(id: string, _action: "approved" | "rejected") {
+  function handleReviewed(id: string) {
     setReports((prev) => prev.filter((report) => report.id !== id));
     setExpandedId(null);
   }
@@ -74,7 +84,7 @@ export function AdminReportsContent() {
       <FilterChips
         options={TABS}
         value={tab}
-        onChange={(v) => setTab(v)}
+        onChange={handleTabChange}
         className="mb-6"
       />
 
