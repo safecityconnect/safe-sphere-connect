@@ -7,6 +7,13 @@ export type SafeWalkDestination = GeoPoint & { address: string };
 export type SafeWalkStatus = "active" | "completed" | "cancelled";
 
 /**
+ * Both Safe Walks and Guardian Mode sessions live in the `safeWalks`
+ * collection. Docs created before Guardian Mode have no `sessionType` and
+ * are Safe Walks.
+ */
+export type SafeWalkSessionType = "safe-walk" | "guardian-mode";
+
+/**
  * Why a walk stopped being active. "arrived" is set automatically once GPS
  * shows the walker within range of the destination; the other two are
  * explicit walker actions.
@@ -27,6 +34,8 @@ export type SafeWalkGuardian = {
  */
 export type SafeWalkDoc = {
   id: string;
+  /** Absent on walks created before Guardian Mode; treat as "safe-walk". */
+  sessionType?: SafeWalkSessionType;
   walkerId: string;
   walkerName: string;
   status: SafeWalkStatus;

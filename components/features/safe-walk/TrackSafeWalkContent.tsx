@@ -18,6 +18,9 @@ import {
   formatDurationShort,
   haversineDistanceMeters,
 } from "@/lib/map/geo";
+import { GuardianSessionTrackView } from "@/components/features/guardian-mode/GuardianSessionTrackView";
+import type { GuardianModeSession } from "@/lib/guardian-mode";
+import { isGuardianModeSession } from "@/lib/guardian-mode-helpers";
 import { subscribeToSafeWalk } from "@/lib/safe-walk";
 import type { SafeWalkDoc } from "@/lib/types/safe-walk";
 import { SafeWalkMapProvider } from "./SafeWalkMapProvider";
@@ -90,7 +93,7 @@ export function TrackSafeWalkContent({ walkId }: TrackSafeWalkContentProps) {
   // superseded by the Directions API's remaining distance/duration
   // whenever that has resolved (see `WalkingRouteWatcher` below).
   const rawRemainingMeters = useMemo(() => {
-    if (!walk) return null;
+    if (!walk || isGuardianModeSession(walk)) return null;
     return haversineDistanceMeters(walk.currentLocation, walk.destination);
   }, [walk]);
 
@@ -155,6 +158,11 @@ export function TrackSafeWalkContent({ walkId }: TrackSafeWalkContentProps) {
         </Card>
       </PageContainer>
     );
+  }
+
+  if (isGuardianModeSession(state.walk)) {
+    // Guardian Mode sessions share this collection but have no destination or route.
+    return <GuardianSessionTrackView session={state.walk as unknown as GuardianModeSession} />;
   }
 
   const activeWalk = state.walk;

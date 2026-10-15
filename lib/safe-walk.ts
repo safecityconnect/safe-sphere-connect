@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getFamilyLinksForChild, getUserName } from "@/lib/family";
+import { isGuardianModeSession } from "@/lib/guardian-mode-helpers";
 import type {
   GeoPoint,
   SafeWalkDestination,
@@ -75,6 +76,7 @@ export async function createSafeWalk(
   input: CreateSafeWalkInput
 ): Promise<string> {
   const docRef = await addDoc(collection(db, SAFE_WALKS_COLLECTION), {
+    sessionType: "safe-walk",
     walkerId: input.walkerId,
     walkerName: input.walkerName,
     status: "active" satisfies SafeWalkStatus,
@@ -125,8 +127,8 @@ export async function getActiveSafeWalkForUser(
     where("status", "==", "active")
   );
   const snap = await getDocs(q);
-  if (snap.empty) return null;
-  return toSafeWalk(snap.docs[0]);
+  const walk = snap.docs.map(toSafeWalk).find((w) => !isGuardianModeSession(w));
+  return walk ?? null;
 }
 
 /**
@@ -146,7 +148,7 @@ export function subscribeToGuardianActiveWalks(
   return onSnapshot(q, (snapshot) => {
     const walks = snapshot.docs
       .map(toSafeWalk)
-      .filter((w) => w.status === "active")
+      .filter((w) => w.status === "active" && !isGuardianModeSession(w))
       .sort(
         (a, b) =>
           (b.startedAt?.toMillis?.() ?? 0) - (a.startedAt?.toMillis?.() ?? 0)
