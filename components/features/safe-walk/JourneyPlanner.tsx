@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { LocationPickerModal } from "@/components/features/report-incident/LocationPickerModal";
 import { useAreaHealth } from "@/hooks/useAreaHealth";
+import {
+  COMMUNITY_CONCERN_CATEGORY_LABELS,
+  COMMUNITY_SURVEY_SOURCE,
+  communityConcernsNearRoute,
+  describeMentions,
+  hasMappedCommunityConcerns,
+} from "@/lib/community-concerns";
 import { INDIA_CENTER } from "@/lib/map/city-centers";
 import {
   formatRouteSelectionDebug,
@@ -15,6 +22,7 @@ import {
   type RouteSafetyCandidate,
 } from "@/lib/safe-route-recommendation";
 import type { GeoPoint, SafeWalkDestination } from "@/lib/types/safe-walk";
+import { cn } from "@/lib/utils";
 import { DestinationSearch } from "./DestinationSearch";
 import { SafeWalkMapView } from "./SafeWalkMapView";
 import {
@@ -148,6 +156,11 @@ export function JourneyPlanner({
   }
 
   const recommendation = selection?.selected ?? null;
+  // Survey concerns are display-only: they never feed the safety score or route choice.
+  const surveyConcerns =
+    selection && hasMappedCommunityConcerns()
+      ? communityConcernsNearRoute(selection.selectedCandidate.path)
+      : null;
   const fastestDiffers =
     Boolean(selection?.comparedMultiple) &&
     selection?.selectedCandidate.id !== selection?.fastestCandidate.id;
@@ -223,7 +236,9 @@ export function JourneyPlanner({
               >
                 {recommendation.hasSafetyData
                   ? `${recommendation.riskLevel} Risk`
-                  : "Limited Data"}
+                  : recommendation.scoreBasis === "no-reports"
+                    ? "No Reports Yet"
+                    : "No Nearby Data"}
               </Badge>
             </div>
 
@@ -254,9 +269,49 @@ export function JourneyPlanner({
             <p className="mt-3 text-xs leading-relaxed text-emerald-800">
               {recommendation.explanation}
             </p>
+            <p
+              className={cn(
+                "mt-1.5 text-xs leading-relaxed",
+                recommendation.hasSafetyData ? "text-emerald-700" : "text-amber-700"
+              )}
+            >
+              {recommendation.evidence}
+            </p>
           </>
         )}
       </Card>
+
+      {surveyConcerns && selectedRoute.status === "ready" && (
+        <Card padding="sm" className="border-sky-200 bg-sky-50">
+          <p className="text-xs font-semibold text-foreground">
+            Community-reported concerns (survey)
+          </p>
+          {surveyConcerns.length === 0 ? (
+            <p className="mt-1 text-xs text-slate-700">
+              No survey concerns are mapped near this route. This does not mean it is safe.
+            </p>
+          ) : (
+            <ul className="mt-1.5 flex flex-col gap-1 text-xs text-slate-700">
+              {surveyConcerns.map(({ concern }) => (
+                <li key={concern.id}>
+                  <span className="font-medium text-foreground">{concern.placeName}</span>
+                  {", "}
+                  {concern.city}: {describeMentions(concern)}
+                  {" · "}
+                  {concern.categories
+                    .map((category) => COMMUNITY_CONCERN_CATEGORY_LABELS[category])
+                    .join(", ")}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-[10px] leading-relaxed text-slate-600">
+            Source: {COMMUNITY_SURVEY_SOURCE.label}
+            {COMMUNITY_SURVEY_SOURCE.conductedOn ? `, ${COMMUNITY_SURVEY_SOURCE.conductedOn}` : ""}.{" "}
+            {COMMUNITY_SURVEY_SOURCE.method} {COMMUNITY_SURVEY_SOURCE.limitations}
+          </p>
+        </Card>
+      )}
 
       {selection && selectedRoute.status === "ready" && (
         <Card padding="sm" className="border-slate-200 bg-slate-50">
@@ -281,7 +336,10 @@ export function JourneyPlanner({
                   </span>
                 </div>
                 <p className="mt-1 text-muted">
-                  {row.distanceText} · {row.durationText} · safety {row.safetyScore}/100
+                  {row.distanceText} · {row.durationText} ·{" "}
+                  {row.scoreBasis === "nearby-reports"
+                    ? `safety ${row.safetyScore}/100`
+                    : "safety unknown (no nearby reports)"}
                 </p>
                 {row.ineligibleReason && (
                   <p className="mt-0.5 text-[10px] text-amber-700">{row.ineligibleReason}</p>
