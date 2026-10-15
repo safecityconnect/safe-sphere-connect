@@ -93,6 +93,11 @@ function formatRelativeTime(ts: Incident["createdAt"]): string {
   return `${days} day${days > 1 ? "s" : ""} ago`;
 }
 
+// Report cities are free text, so "chandigarh " should still match "Chandigarh".
+function isSameCity(reportCity: string | undefined, selectedCity: string): boolean {
+  return reportCity?.trim().toLowerCase() === selectedCity.toLowerCase();
+}
+
 function toDisplayIncident(incident: Incident): MapDisplayIncident {
   return {
     id: incident.id,
@@ -215,7 +220,7 @@ export function SafetyMapContent() {
   );
 
   const filtered = useMemo(() => {
-    let items = displayIncidents.filter((i) => i.city === city);
+    let items = displayIncidents.filter((i) => isSameCity(i.city, city));
     if (filter !== "all") {
       items = items.filter((i) => i.category === filter);
     }
@@ -223,7 +228,7 @@ export function SafetyMapContent() {
   }, [displayIncidents, filter, city]);
 
   const mapMarkers = useMemo(() => {
-    let incidentItems = incidents.filter((i) => i.city === city);
+    let incidentItems = incidents.filter((i) => isSameCity(i.city, city));
     if (filter !== "all") {
       incidentItems = incidentItems.filter(
         (i) => toMarkerType(i.markerType) === filter
@@ -234,7 +239,7 @@ export function SafetyMapContent() {
     const showHazards = filter === "all" || filter === "hazard";
     const infrastructureMarkers = showHazards
       ? infrastructureReportsToMarkers(
-          infrastructureReports.filter((report) => report.city === city)
+          infrastructureReports.filter((report) => isSameCity(report.city, city))
         )
       : [];
 
