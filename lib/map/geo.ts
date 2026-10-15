@@ -19,6 +19,30 @@ export function haversineDistanceMeters(a: GeoPoint, b: GeoPoint): number {
   return 2 * EARTH_RADIUS_METERS * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+function distancePointToSegmentMeters(point: GeoPoint, a: GeoPoint, b: GeoPoint): number {
+  const dx = b.lng - a.lng;
+  const dy = b.lat - a.lat;
+  if (dx === 0 && dy === 0) return haversineDistanceMeters(point, a);
+
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.lng - a.lng) * dx + (point.lat - a.lat) * dy) / (dx * dx + dy * dy))
+  );
+  return haversineDistanceMeters(point, { lat: a.lat + t * dy, lng: a.lng + t * dx });
+}
+
+/** Shortest distance from a point to any segment of a polyline. */
+export function distancePointToPathMeters(point: GeoPoint, path: GeoPoint[]): number {
+  if (path.length === 0) return Number.POSITIVE_INFINITY;
+  if (path.length === 1) return haversineDistanceMeters(point, path[0]);
+
+  let nearest = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < path.length - 1; i++) {
+    nearest = Math.min(nearest, distancePointToSegmentMeters(point, path[i], path[i + 1]));
+  }
+  return nearest;
+}
+
 export function estimateWalkingSeconds(meters: number): number {
   return meters / AVERAGE_WALKING_SPEED_MPS;
 }

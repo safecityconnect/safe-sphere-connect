@@ -33,9 +33,15 @@ import {
   type MapMarkerType,
 } from "@/lib/sample-data";
 import { listPublicVerifiedIncidents } from "@/lib/incidents";
-import { incidentsToMarkers } from "@/lib/map/incident-to-marker";
+import { listPublicVerifiedInfrastructureReports } from "@/lib/infrastructure-reports";
+import {
+  incidentsToMarkers,
+  infrastructureHasCoordinates,
+  infrastructureReportsToMarkers,
+} from "@/lib/map/incident-to-marker";
 import type { LatLng } from "@/lib/map/city-centers";
 import type { Incident } from "@/lib/types/incident";
+import type { InfrastructureReport } from "@/lib/types/infrastructure-report";
 import { MapCanvas } from "./MapCanvas";
 import { cn } from "@/lib/utils";
 
@@ -104,6 +110,25 @@ function toDisplayIncident(incident: Incident): MapDisplayIncident {
   };
 }
 
+function toDisplayInfrastructure(
+  report: InfrastructureReport
+): MapDisplayIncident | null {
+  if (!infrastructureHasCoordinates(report)) return null;
+  return {
+    id: report.id,
+    type: report.title,
+    category: "hazard",
+    city: report.city,
+    location: report.locationText || "—",
+    distance: "—",
+    time: formatRelativeTime(report.createdAt),
+    severity: report.severity,
+    verified: report.verificationStatus === "verified",
+    safesphereVerified: false,
+    description: report.description,
+  };
+}
+
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function SafetyMapContent() {
@@ -116,26 +141,45 @@ export function SafetyMapContent() {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [infrastructureReports, setInfrastructureReports] = useState<
+    InfrastructureReport[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const listItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  const fetchIncidents = useCallback(async () => {
+  const fetchMapReports = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const raw = await listPublicVerifiedIncidents();
-      setIncidents(raw);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load incidents.");
-    } finally {
-      setLoading(false);
+    const [incidentsResult, infrastructureResult] = await Promise.allSettled([
+      listPublicVerifiedIncidents(),
+      listPublicVerifiedInfrastructureReports(),
+    ]);
+
+    setIncidents(
+      incidentsResult.status === "fulfilled" ? incidentsResult.value : []
+    );
+    setInfrastructureReports(
+      infrastructureResult.status === "fulfilled" ? infrastructureResult.value : []
+    );
+
+    if (
+      incidentsResult.status === "rejected" &&
+      infrastructureResult.status === "rejected"
+    ) {
+      setError("Failed to load map reports.");
+    } else if (
+      incidentsResult.status === "rejected" ||
+      infrastructureResult.status === "rejected"
+    ) {
+      setError("Some map reports are temporarily unavailable.");
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchIncidents();
-  }, [fetchIncidents]);
+    fetchMapReports();
+  }, [fetchMapReports]);
 
   const cityFilters = useMemo(
     () => INDIAN_CITIES.map((c) => ({ id: c, label: c })),
@@ -161,8 +205,13 @@ export function SafetyMapContent() {
   );
 
   const displayIncidents = useMemo(
-    () => incidents.map(toDisplayIncident),
-    [incidents]
+    () => [
+      ...incidents.map(toDisplayIncident),
+      ...infrastructureReports
+        .map(toDisplayInfrastructure)
+        .filter((item): item is MapDisplayIncident => item !== null),
+    ],
+    [incidents, infrastructureReports]
   );
 
   const filtered = useMemo(() => {
@@ -174,12 +223,23 @@ export function SafetyMapContent() {
   }, [displayIncidents, filter, city]);
 
   const mapMarkers = useMemo(() => {
-    let items = incidents.filter((i) => i.city === city);
+    let incidentItems = incidents.filter((i) => i.city === city);
     if (filter !== "all") {
-      items = items.filter((i) => toMarkerType(i.markerType) === filter);
+      incidentItems = incidentItems.filter(
+        (i) => toMarkerType(i.markerType) === filter
+      );
     }
-    return incidentsToMarkers(items);
-  }, [incidents, filter, city]);
+    const incidentMarkers = incidentsToMarkers(incidentItems);
+
+    const showHazards = filter === "all" || filter === "hazard";
+    const infrastructureMarkers = showHazards
+      ? infrastructureReportsToMarkers(
+          infrastructureReports.filter((report) => report.city === city)
+        )
+      : [];
+
+    return [...incidentMarkers, ...infrastructureMarkers];
+  }, [incidents, infrastructureReports, filter, city]);
 
   const activeSelectedId = useMemo(() => {
     if (!selectedId) return null;

@@ -1,8 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono, Noto_Sans } from "next/font/google";
 import { LocaleProvider } from "@/components/providers/LocaleProvider";
 import { APP_NAME, TAGLINE, REGION } from "@/lib/constants";
 import "./globals.css";
+
+const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const googleMapsScriptSrc = googleMapsApiKey
+  ? `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&v=weekly&loading=async`
+  : null;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,6 +60,13 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${notoSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
+        {googleMapsScriptSrc ? (
+          <Script
+            id="google-maps-js"
+            src={googleMapsScriptSrc}
+            strategy="beforeInteractive"
+          />
+        ) : null}
         <LocaleProvider>{children}</LocaleProvider>
       </body>
     </html>

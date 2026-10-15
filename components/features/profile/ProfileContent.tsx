@@ -15,6 +15,7 @@ import {
   Shield,
   User,
   Users,
+  Wrench,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +27,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { LanguageSelector } from "@/components/ui/LanguageSelector";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged } from "firebase/auth";
@@ -101,6 +103,7 @@ const defaultProfile: ProfileState = {
 export function ProfileContent() {
   const { t } = useLocale();
   const router = useRouter();
+  const { isAdmin } = useIsAdmin();
   const [isEditing, setIsEditing] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
@@ -381,6 +384,21 @@ export function ProfileContent() {
       <section className="mb-6">
         <h2 className="mb-3 text-sm font-semibold text-foreground">Settings</h2>
         <Card padding="none" className="overflow-hidden">
+          {isAdmin && (
+            <Link
+              href={`${ROUTES.admin}/reports`}
+              className="flex w-full items-center gap-3 border-b border-border px-4 py-3.5 text-left transition-colors hover:bg-primary-light/50"
+            >
+              <Wrench className="h-5 w-5 shrink-0 text-muted" />
+              <div className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-foreground">Civic Reports</span>
+                <span className="block text-xs text-muted">
+                  Approve or reject Fix My City submissions
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+            </Link>
+          )}
           {menuItems.map((item, index) => {
             const Icon = item.icon;
             const sharedClasses = cn(

@@ -2,12 +2,9 @@
 
 import {
   Activity,
-  Droplets,
+  AlertTriangle,
+  MapPin,
   Shield,
-  TrendingDown,
-  TrendingUp,
-  TreePine,
-  Wind,
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -17,21 +14,25 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useLocale } from "@/components/providers/LocaleProvider";
-import { useSimulatedLoading } from "@/hooks/useSimulatedLoading";
+import { useAreaHealth } from "@/hooks/useAreaHealth";
 import { ROUTES } from "@/lib/constants";
-import { HEALTH_METRICS, HEALTH_TREND, LIVE_LOCATION } from "@/lib/sample-data";
-import { cn } from "@/lib/utils";
+import type { SafetyRiskLevel } from "@/lib/area-health";
 
 const iconMap: Record<string, LucideIcon> = {
   shield: Shield,
-  wind: Wind,
-  droplets: Droplets,
-  tree: TreePine,
   activity: Activity,
   wrench: Wrench,
 };
 
-const OVERALL_SCORE = 78;
+const riskVariant: Record<
+  SafetyRiskLevel,
+  "success" | "warning" | "danger"
+> = {
+  Low: "success",
+  Moderate: "warning",
+  High: "danger",
+  Critical: "danger",
+};
 
 function ScoreRing({ score }: { score: number }) {
   const circumference = 2 * Math.PI * 54;
@@ -87,29 +88,11 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-function TrendChart() {
-  const max = Math.max(...HEALTH_TREND.map((t) => t.score));
-
-  return (
-    <div className="flex items-end justify-between gap-2 pt-2" style={{ height: 120 }}>
-      {HEALTH_TREND.map((point) => (
-        <div key={point.month} className="flex flex-1 flex-col items-center gap-1">
-          <div
-            className="w-full rounded-t-md bg-gradient-to-t from-primary to-accent transition-all"
-            style={{ height: `${(point.score / max) * 100}%`, minHeight: 8 }}
-          />
-          <span className="text-[10px] text-muted">{point.month}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function AreaHealthContent() {
   const { t } = useLocale();
-  const isLoading = useSimulatedLoading();
+  const { snapshot, loading, error } = useAreaHealth();
 
-  if (isLoading) {
+  if (loading) {
     return (
       <PageContainer withBottomNav>
         <PageHeader title={t.areaHealth} subtitle={t.loading} backHref={ROUTES.dashboard} />
@@ -131,18 +114,38 @@ export function AreaHealthContent() {
         backHref={ROUTES.dashboard}
       />
 
+      {error && (
+        <Card padding="sm" className="mb-4 border-amber-200 bg-amber-50">
+          <p className="flex items-center gap-2 text-xs text-amber-700">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {error}
+          </p>
+        </Card>
+      )}
+
       <Card className="mb-6 text-center" padding="lg">
         <h2 className="mb-3 text-sm font-semibold text-foreground">{t.areaSafetyScore}</h2>
-        <ScoreRing score={OVERALL_SCORE} />
-        <Badge variant="success" className="mt-4">
-          {t.aboveAverage}
+        <ScoreRing score={snapshot.overallScore} />
+        <Badge variant={riskVariant[snapshot.riskLevel]} className="mt-4">
+          {snapshot.reportCount === 0 ? "Limited data" : `${snapshot.riskLevel} Risk`}
         </Badge>
-        <p className="mt-3 text-sm text-muted">{t.areaImproved}</p>
+        <p className="mt-3 text-sm text-muted">
+          Based on {snapshot.reportCount} verified incident and infrastructure{" "}
+          {snapshot.reportCount === 1 ? "report" : "reports"}.
+        </p>
         <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4">
           {[
-            { label: t.areaRank, value: "#8" },
-            { label: t.nationalAvg, value: "74" },
-            { label: t.coveredAreas, value: "7" },
+            { label: "Active reports", value: snapshot.activeReportCount },
+            { label: "Reported sectors", value: snapshot.sectors.length },
+            {
+              label: "Last report",
+              value: snapshot.updatedAt
+                ? snapshot.updatedAt.toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                  })
+                : "—",
+            },
           ].map((item) => (
             <div key={item.label}>
               <p className="text-lg font-bold text-foreground">{item.value}</p>
@@ -152,48 +155,75 @@ export function AreaHealthContent() {
         </div>
       </Card>
 
-      <Card className="mb-6" padding="md">
-        <h2 className="mb-1 text-sm font-semibold text-foreground">6-Month Trend</h2>
-        <p className="mb-2 text-xs text-muted">Overall area health score — {LIVE_LOCATION.area}</p>
-        <TrendChart />
-      </Card>
-
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Category Breakdown</h2>
-        <div className="flex flex-col gap-3">
-          {HEALTH_METRICS.map((metric) => {
-            const Icon = iconMap[metric.icon] ?? Activity;
-            const isPositive = metric.trend > 0;
-            const isNegative = metric.trend < 0;
-
-            return (
-              <Card key={metric.label} padding="sm">
+      <section className="mb-6">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Safety by Sector</h2>
+        {snapshot.sectors.length === 0 ? (
+          <Card padding="sm">
+            <p className="text-sm text-muted">
+              No verified reports are available yet. Sector scores will appear as reports are
+              published.
+            </p>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {snapshot.sectors.map((sector) => (
+              <Card key={sector.key} padding="sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-light text-primary">
-                      <Icon className="h-4 w-4" />
+                      <MapPin className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">{metric.label}</p>
-                      <p className="text-xs text-muted">{metric.score}/100</p>
-                      <p className="mt-1 line-clamp-2 text-xs text-muted">{metric.description}</p>
+                      <p className="font-medium text-foreground">{sector.sector}</p>
+                      <p className="text-xs text-muted">{sector.city}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        {sector.incidentCount} incidents · {sector.infrastructureReportCount}{" "}
+                        infrastructure reports
+                      </p>
                     </div>
                   </div>
-                  <span
-                    className={cn(
-                      "flex shrink-0 items-center gap-0.5 text-xs font-semibold",
-                      isPositive && "text-accent",
-                      isNegative && "text-danger",
-                      !isPositive && !isNegative && "text-muted"
-                    )}
-                  >
-                    {isPositive && <TrendingUp className="h-3.5 w-3.5" />}
-                    {isNegative && <TrendingDown className="h-3.5 w-3.5" />}
-                    {metric.trend > 0 ? `+${metric.trend}` : metric.trend < 0 ? metric.trend : "—"}
-                  </span>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xl font-bold text-foreground">{sector.score}</p>
+                    <Badge variant={riskVariant[sector.riskLevel]}>
+                      {sector.riskLevel} Risk
+                    </Badge>
+                  </div>
                 </div>
                 <div className="mt-3">
-                  <ScoreBar score={metric.score} />
+                  <ScoreBar score={sector.score} />
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Report Breakdown</h2>
+        <div className="flex flex-col gap-3">
+          {snapshot.metrics.map((metric) => {
+            const Icon = iconMap[metric.icon] ?? Activity;
+            return (
+              <Card key={metric.label} padding="sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-light text-primary">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-foreground">{metric.label}</p>
+                      <span className="text-sm font-semibold text-foreground">
+                        {metric.score}/100
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted">
+                      {metric.reportCount} {metric.reportCount === 1 ? "report" : "reports"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted">{metric.description}</p>
+                    <div className="mt-3">
+                      <ScoreBar score={metric.score} />
+                    </div>
+                  </div>
                 </div>
               </Card>
             );
@@ -203,7 +233,8 @@ export function AreaHealthContent() {
 
       <Card padding="sm" className="mt-6 bg-primary-light/30">
         <p className="text-xs text-muted">
-          Scores are calculated from citizen reports, municipal data, and public safety records across your area. Updated weekly.
+          Scores update from verified Firestore reports. Open, severe, recent, and
+          higher-risk report types have more impact; resolved reports have less impact.
         </p>
       </Card>
     </PageContainer>

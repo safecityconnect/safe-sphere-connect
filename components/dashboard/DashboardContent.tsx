@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { onAuthStateChanged } from "firebase/auth";
 import { ChevronRight, Moon, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -11,18 +12,17 @@ import { useLocale } from "@/components/providers/LocaleProvider";
 import { DASHBOARD_CARDS, ROUTES } from "@/lib/constants";
 import { NIGHT_SAFETY_ALERTS } from "@/lib/sample-data";
 import { auth } from "@/lib/firebase";
+import { useAreaHealth } from "@/hooks/useAreaHealth";
 import { useEffect, useState } from "react";
 
 export function DashboardContent() {
   const [userEmail, setUserEmail] = useState("");
+  const { snapshot: areaHealth, loading: areaHealthLoading } = useAreaHealth();
 
-useEffect(() => {
-  const user = auth.currentUser;
-
-  if (user) {
-    setUserEmail(user.email || "");
-  }
-}, []);
+  useEffect(
+    () => onAuthStateChanged(auth, (user) => setUserEmail(user?.email ?? "")),
+    []
+  );
   const { t } = useLocale();
   const nightAlert = NIGHT_SAFETY_ALERTS[0];
 
@@ -58,18 +58,27 @@ useEffect(() => {
             <div>
               <p className="text-sm font-medium text-white/80">{t.areaHealth}</p>
               <p className="mt-1 text-3xl font-bold">
-                78<span className="text-lg font-normal text-white/70">/100</span>
+                {areaHealthLoading ? "—" : areaHealth.overallScore}
+                <span className="text-lg font-normal text-white/70">/100</span>
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="success" className="bg-white/20 text-white">
-                {t.good}
+                {areaHealth.reportCount === 0
+                  ? "Limited data"
+                  : `${areaHealth.riskLevel} risk`}
               </Badge>
               <ChevronRight className="h-5 w-5 text-white/60" />
             </div>
           </div>
           <p className="mt-3 text-sm text-white/70">
-            Your area&apos;s safety index improved by 3 points this week.
+            {areaHealth.reportCount === 0
+              ? "Area Health will update as verified reports become available."
+              : `Calculated from ${areaHealth.reportCount} verified incident and infrastructure ${
+                  areaHealth.reportCount === 1 ? "report" : "reports"
+                } across ${areaHealth.sectors.length} ${
+                  areaHealth.sectors.length === 1 ? "sector" : "sectors"
+                }.`}
           </p>
         </Card>
       </Link>

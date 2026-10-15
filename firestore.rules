@@ -19,6 +19,35 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function hasValidCoordinates(data) {
+      return (
+        !('latitude' in data) &&
+        !('longitude' in data)
+      ) || (
+        data.latitude is number &&
+        data.longitude is number &&
+        data.latitude >= -90 &&
+        data.latitude <= 90 &&
+        data.longitude >= -180 &&
+        data.longitude <= 180
+      );
+    }
+
+    function hasValidReportText(data) {
+      return data.title is string &&
+        data.title.size() > 0 &&
+        data.title.size() <= 200 &&
+        data.description is string &&
+        data.description.size() > 0 &&
+        data.description.size() <= 5000 &&
+        data.locationText is string &&
+        data.locationText.size() > 0 &&
+        data.locationText.size() <= 500 &&
+        data.city is string &&
+        data.city.size() > 0 &&
+        data.city.size() <= 100;
+    }
+
     // ── users ────────────────────────────────────────────────────────────
     // Any signed-in user may look up another user's profile (name, avatar
     // initials, etc.) — required for Family Safety and Safe Walk guardian
@@ -26,7 +55,8 @@ service cloud.firestore {
     // field can never be changed by the client (prevents privilege escalation).
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        !('role' in request.resource.data);
       allow update: if isOwner(userId) &&
         (!('role' in request.resource.data) ||
           request.resource.data.role == resource.data.role);
@@ -43,7 +73,79 @@ service cloud.firestore {
           resource.data.userId == request.auth.uid ||
           isAdmin());
       allow create: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid;
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.keys().hasAll([
+          'title', 'description', 'category', 'location',
+          'incidentCategory', 'locationText', 'city', 'severity',
+          'markerType', 'safesphereVerified', 'verificationStatus',
+          'visibility', 'userId', 'createdAt', 'updatedAt', 'status'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'title', 'description', 'category', 'location',
+          'incidentCategory', 'locationText', 'city', 'latitude',
+          'longitude', 'severity', 'markerType', 'safesphereVerified',
+          'verificationStatus', 'visibility', 'userId', 'createdAt',
+          'updatedAt', 'status', 'imageUrls'
+        ]) &&
+        hasValidReportText(request.resource.data) &&
+        request.resource.data.category is string &&
+        request.resource.data.incidentCategory is string &&
+        request.resource.data.severity in ['low', 'medium', 'high'] &&
+        request.resource.data.markerType == 'incident' &&
+        request.resource.data.status == 'open' &&
+        hasValidCoordinates(request.resource.data) &&
+        (!('imageUrls' in request.resource.data) ||
+          (request.resource.data.imageUrls is list &&
+            request.resource.data.imageUrls.size() <= 3)) &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time &&
+        (
+          (
+            request.resource.data.safesphereVerified == false &&
+            request.resource.data.verificationStatus == 'pending' &&
+            request.resource.data.visibility == 'pending'
+          ) ||
+          (
+            isAdmin() &&
+            request.resource.data.safesphereVerified == true &&
+            request.resource.data.verificationStatus == 'verified' &&
+            request.resource.data.visibility == 'public'
+          )
+        );
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ── infrastructureReports ───────────────────────────────────────────
+    // Signed-in residents can use civic hazards in Area Health and route
+    // safety calculations. Reporters create their own reports; municipal
+    // status/severity updates remain admin-only.
+    match /infrastructureReports/{reportId} {
+      allow read: if isSignedIn() &&
+        (resource.data.visibility == 'public' ||
+          resource.data.userId == request.auth.uid ||
+          isAdmin());
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.keys().hasAll([
+          'title', 'description', 'category', 'locationText', 'city',
+          'severity', 'status', 'verificationStatus', 'visibility',
+          'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'title', 'description', 'category', 'locationText', 'city',
+          'latitude', 'longitude', 'severity', 'status',
+          'verificationStatus', 'visibility', 'userId', 'createdAt', 'updatedAt'
+        ]) &&
+        hasValidReportText(request.resource.data) &&
+        request.resource.data.category is string &&
+        request.resource.data.severity in ['low', 'medium', 'high'] &&
+        request.resource.data.status == 'submitted' &&
+        request.resource.data.verificationStatus == 'pending' &&
+        request.resource.data.visibility == 'pending' &&
+        hasValidCoordinates(request.resource.data) &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
       allow update: if isAdmin();
       allow delete: if false;
     }

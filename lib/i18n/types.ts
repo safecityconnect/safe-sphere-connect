@@ -12,11 +12,6 @@ export type TranslationKeys = {
   areaHealthSubtitle: string;
   areaSafetyScore: string;
   good: string;
-  aboveAverage: string;
-  areaImproved: string;
-  nationalAvg: string;
-  areaRank: string;
-  coveredAreas: string;
   safetyMap: string;
   safetyMapSubtitle: string;
   fixMyCity: string;

@@ -35,18 +35,6 @@ export type MapIncident = {
   y: number;
 };
 
-export type CivicReport = {
-  id: string;
-  title: string;
-  category: string;
-  location: string;
-  city: IndianCity;
-  status: "Submitted" | "In Progress" | "Resolved";
-  date: string;
-  ticketId: string;
-  description: string;
-};
-
 export type GuardianContact = {
   id: string;
   name: string;
@@ -60,19 +48,6 @@ export type Guardian = {
   name: string;
   status: "Available" | "Offline" | "Watching";
   phone: string;
-};
-
-export type HealthMetric = {
-  label: string;
-  score: number;
-  trend: number;
-  description: string;
-  icon: string;
-};
-
-export type HealthTrend = {
-  month: string;
-  score: number;
 };
 
 export type UserProfile = {
@@ -287,75 +262,6 @@ export const MAP_INCIDENTS: MapIncident[] = [
   },
 ];
 
-export const CIVIC_REPORTS: CivicReport[] = [
-  {
-    id: "1",
-    title: "Broken streetlight",
-    category: "Street Lights",
-    location: "Sector 22-C, Chandigarh",
-    city: "Chandigarh",
-    status: "In Progress",
-    date: "2 days ago",
-    ticketId: "FMC-IN-2026-1847",
-    description: "Streetlight out for 3 nights. Area is very dark.",
-  },
-  {
-    id: "2",
-    title: "Large pothole on main road",
-    category: "Potholes",
-    location: "Airport Road, Mohali",
-    city: "Mohali",
-    status: "Submitted",
-    date: "5 days ago",
-    ticketId: "FMC-IN-2026-1823",
-    description: "Deep pothole damaging vehicles. Needs urgent repair.",
-  },
-  {
-    id: "3",
-    title: "Garbage pile near park",
-    category: "Garbage",
-    location: "Sector 10 Market, Panchkula",
-    city: "Panchkula",
-    status: "Resolved",
-    date: "1 week ago",
-    ticketId: "FMC-IN-2026-1791",
-    description: "Uncollected garbage cleared by municipal team.",
-  },
-  {
-    id: "4",
-    title: "Water pipeline leakage",
-    category: "Water Leakage",
-    location: "Karol Bagh, Delhi",
-    city: "Delhi",
-    status: "In Progress",
-    date: "3 days ago",
-    ticketId: "FMC-IN-2026-1835",
-    description: "Water leaking onto road for over a week.",
-  },
-  {
-    id: "5",
-    title: "Open manhole on footpath",
-    category: "Open Manholes",
-    location: "Banjara Hills Road No. 12, Hyderabad",
-    city: "Hyderabad",
-    status: "Submitted",
-    date: "1 day ago",
-    ticketId: "FMC-IN-2026-1852",
-    description: "Uncovered manhole poses danger to pedestrians.",
-  },
-  {
-    id: "6",
-    title: "Unsafe area after dark",
-    category: "Unsafe Areas",
-    location: "Bandra Reclamation, Mumbai",
-    city: "Mumbai",
-    status: "In Progress",
-    date: "4 days ago",
-    ticketId: "FMC-IN-2026-1840",
-    description: "Poor lighting and no CCTV on isolated stretch.",
-  },
-];
-
 export const GUARDIAN_MODE_CONTACTS: GuardianContact[] = [
   {
     id: "1",
@@ -497,60 +403,6 @@ export const NIGHT_SAFETY_ALERTS: NightSafetyAlert[] = [
     severity: "high",
     activeAfter: "21:00",
   },
-];
-
-export const HEALTH_METRICS: HealthMetric[] = [
-  {
-    label: "Crime & Safety",
-    score: 72,
-    trend: 2,
-    description: "Based on reported incidents and police response times",
-    icon: "shield",
-  },
-  {
-    label: "Air Quality",
-    score: 68,
-    trend: -3,
-    description: "AQI levels and pollution index from city monitoring stations",
-    icon: "wind",
-  },
-  {
-    label: "Water Quality",
-    score: 85,
-    trend: 1,
-    description: "Municipal water testing and contamination reports",
-    icon: "droplets",
-  },
-  {
-    label: "Green Spaces",
-    score: 78,
-    trend: 2,
-    description: "Park accessibility, maintenance, and tree cover",
-    icon: "tree",
-  },
-  {
-    label: "Emergency Response",
-    score: 81,
-    trend: 3,
-    description: "Average ambulance and fire brigade response times",
-    icon: "activity",
-  },
-  {
-    label: "Infrastructure",
-    score: 74,
-    trend: -1,
-    description: "Road conditions, street lighting, and civic upkeep",
-    icon: "wrench",
-  },
-];
-
-export const HEALTH_TREND: HealthTrend[] = [
-  { month: "Jan", score: 71 },
-  { month: "Feb", score: 73 },
-  { month: "Mar", score: 72 },
-  { month: "Apr", score: 74 },
-  { month: "May", score: 76 },
-  { month: "Jun", score: 78 },
 ];
 
 export const USER_PROFILE: UserProfile = {

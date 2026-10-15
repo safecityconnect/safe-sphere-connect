@@ -91,14 +91,20 @@ export function ReportIncidentContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Wait for Auth restoration before reading currentUser — avoids a false
+    // null early-return while IndexedDB persistence is still hydrating.
+    await auth.authStateReady();
     const user = auth.currentUser;
     if (!user) {
       setSubmitError("You must be signed in to report an incident.");
       return;
     }
+
     setIsSubmitting(true);
     setSubmitError(null);
     setSubmitSuccess(false);
+
     try {
       await addDoc(collection(db, "incidents"), {
         title: form.title,
@@ -125,8 +131,7 @@ export function ReportIncidentContent() {
         status: "open",
       });
       setSubmitSuccess(true);
-      setForm(initialForm);
-      setTimeout(() => setSubmitSuccess(false), 5000);
+      setForm({ ...initialForm });
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : "Failed to submit. Please try again."

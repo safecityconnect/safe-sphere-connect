@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "infrastructureReports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "verificationStatus", "order": "ASCENDING" },
+        { "fieldPath": "visibility", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

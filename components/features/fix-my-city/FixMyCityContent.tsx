@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import {
-  Camera,
   CheckCircle,
   Clock,
   FileText,
@@ -19,21 +19,37 @@ import { Input } from "@/components/ui/Input";
 import { ListSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { useSimulatedLoading } from "@/hooks/useSimulatedLoading";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
-import { CIVIC_REPORTS, INDIAN_CITIES, REPORT_CATEGORIES } from "@/lib/sample-data";
+import { auth } from "@/lib/firebase";
+import {
+  createInfrastructureReport,
+  listInfrastructureReportsForUser,
+} from "@/lib/infrastructure-reports";
+import { INDIAN_CITIES, REPORT_CATEGORIES } from "@/lib/sample-data";
+import { getCityCenter, type LatLng } from "@/lib/map/city-centers";
+import type {
+  InfrastructureReport,
+  InfrastructureReportStatus,
+} from "@/lib/types/infrastructure-report";
+import { infrastructureSeverityForCategory } from "@/lib/types/infrastructure-report";
 import { cn } from "@/lib/utils";
+import { LocationPickerModal } from "@/components/features/report-incident/LocationPickerModal";
 
 const statusVariant = {
-  "In Progress": "warning" as const,
-  Submitted: "info" as const,
-  Resolved: "success" as const,
+  "in-progress": "warning" as const,
+  submitted: "info" as const,
+  resolved: "success" as const,
 };
 
-const statusSteps = ["Submitted", "In Progress", "Resolved"] as const;
+const statusSteps = ["submitted", "in-progress", "resolved"] as const;
+const statusLabel: Record<InfrastructureReportStatus, string> = {
+  submitted: "Submitted",
+  "in-progress": "In Progress",
+  resolved: "Resolved",
+};
 
-function StatusProgress({ status }: { status: keyof typeof statusVariant }) {
+function StatusProgress({ status }: { status: InfrastructureReportStatus }) {
   const currentIndex = statusSteps.indexOf(status);
 
   return (
@@ -52,25 +68,130 @@ function StatusProgress({ status }: { status: keyof typeof statusVariant }) {
   );
 }
 
+function reportDate(report: InfrastructureReport): string {
+  if (!report.createdAt) return "Just now";
+  return report.createdAt.toDate().toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export function FixMyCityContent() {
   const { t } = useLocale();
-  const isLoading = useSimulatedLoading();
   const [category, setCategory] = useState<string>("All");
   const [showForm, setShowForm] = useState(false);
+  const [reports, setReports] = useState<InfrastructureReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [coords, setCoords] = useState<LatLng | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [form, setForm] = useState<{
+    title: string;
+    category: string;
+    city: (typeof INDIAN_CITIES)[number];
+    locationText: string;
+    description: string;
+  }>({
+    title: "",
+    category: REPORT_CATEGORIES[1],
+    city: INDIAN_CITIES[0],
+    locationText: "",
+    description: "",
+  });
+
+  useEffect(
+    () =>
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          setReports([]);
+          setIsLoading(false);
+          return;
+        }
+        try {
+          setReports(await listInfrastructureReportsForUser(user.uid));
+        } catch (loadError) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Could not load infrastructure reports."
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      }),
+    []
+  );
 
   const filtered = useMemo(() => {
-    if (category === "All") return CIVIC_REPORTS;
-    return CIVIC_REPORTS.filter((r) => r.category === category);
-  }, [category]);
+    if (category === "All") return reports;
+    return reports.filter((report) => report.category === category);
+  }, [category, reports]);
 
   const stats = useMemo(
     () => ({
-      submitted: CIVIC_REPORTS.filter((r) => r.status === "Submitted").length,
-      inProgress: CIVIC_REPORTS.filter((r) => r.status === "In Progress").length,
-      resolved: CIVIC_REPORTS.filter((r) => r.status === "Resolved").length,
+      submitted: reports.filter((report) => report.status === "submitted").length,
+      inProgress: reports.filter((report) => report.status === "in-progress").length,
+      resolved: reports.filter((report) => report.status === "resolved").length,
     }),
-    []
+    [reports]
   );
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    await auth.authStateReady();
+    const user = auth.currentUser;
+    if (!user) {
+      setError("You must be signed in to submit a report.");
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    setSubmitSuccess(false);
+    try {
+      const id = await createInfrastructureReport({
+        ...form,
+        userId: user.uid,
+        ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
+      });
+      setReports((current) => [
+        {
+          id,
+          ...form,
+          severity: infrastructureSeverityForCategory(form.category),
+          status: "submitted",
+          verificationStatus: "pending",
+          visibility: "pending",
+          userId: user.uid,
+          ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
+          createdAt: null,
+          updatedAt: null,
+        },
+        ...current,
+      ]);
+      setForm({
+        title: "",
+        category: REPORT_CATEGORIES[1],
+        city: INDIAN_CITIES[0],
+        locationText: "",
+        description: "",
+      });
+      setCoords(null);
+      setShowForm(false);
+      setSubmitSuccess(true);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Could not submit the infrastructure report."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -93,7 +214,7 @@ export function FixMyCityContent() {
         subtitle={t.fixMyCitySubtitle}
         backHref={ROUTES.dashboard}
         action={
-          <Button size="sm" onClick={() => setShowForm(!showForm)}>
+          <Button size="sm" onClick={() => { setShowForm(!showForm); setSubmitSuccess(false); }}>
             <Plus className="h-4 w-4" />
             Report
           </Button>
@@ -113,17 +234,42 @@ export function FixMyCityContent() {
         ))}
       </div>
 
+      {error && (
+        <p className="mb-4 rounded-lg bg-danger-light px-3 py-2 text-xs text-danger">
+          {error}
+        </p>
+      )}
+
+      {submitSuccess && (
+        <p className="mb-4 flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+          Report submitted successfully. You can track it under My Reports.
+        </p>
+      )}
+
       {showForm ? (
         <Card className="mb-6" padding="md">
           <h3 className="font-semibold text-foreground">{t.newReport}</h3>
           <p className="mt-1 text-sm text-muted">
             Describe the issue and we&apos;ll route it to the right department.
           </p>
-          <form className="mt-4 flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
-            <Input label="Issue Title" placeholder="e.g. Broken streetlight" required />
+          <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit}>
+            <Input
+              label="Issue Title"
+              placeholder="e.g. Broken streetlight"
+              value={form.title}
+              onChange={(event) => setForm({ ...form, title: event.target.value })}
+              required
+              disabled={isSubmitting}
+            />
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-foreground">Category</label>
-              <select className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+              <select
+                className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                value={form.category}
+                onChange={(event) => setForm({ ...form, category: event.target.value })}
+                disabled={isSubmitting}
+              >
                 {REPORT_CATEGORIES.filter((c) => c !== "All").map((cat) => (
                   <option key={cat}>{cat}</option>
                 ))}
@@ -131,33 +277,63 @@ export function FixMyCityContent() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-foreground">City</label>
-              <select className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+              <select
+                className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                value={form.city}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    city: event.target.value as (typeof INDIAN_CITIES)[number],
+                  })
+                }
+                disabled={isSubmitting}
+              >
                 {INDIAN_CITIES.map((city) => (
                   <option key={city}>{city}</option>
                 ))}
               </select>
             </div>
-            <Input label="Location" placeholder="Sector, landmark, or street address" required />
+            <Input
+              label="Location"
+              placeholder="Sector, landmark, or street address"
+              value={form.locationText}
+              onChange={(event) => setForm({ ...form, locationText: event.target.value })}
+              required
+              disabled={isSubmitting}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowLocationPicker(true)}
+              disabled={isSubmitting}
+            >
+              <MapPin className="h-4 w-4" />
+              {coords ? "Map location attached" : "Set exact map location"}
+            </Button>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-foreground">Description</label>
               <textarea
                 className="min-h-[80px] w-full resize-none rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 placeholder="Provide details to help crews respond faster..."
+                value={form.description}
+                onChange={(event) => setForm({ ...form, description: event.target.value })}
+                required
+                disabled={isSubmitting}
               />
             </div>
-            <Card padding="sm" className="flex items-center gap-3 border-dashed bg-primary-light/20">
-              <Camera className="h-8 w-8 text-primary" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Add Photo</p>
-                <p className="text-xs text-muted">Tap to attach evidence (optional)</p>
-              </div>
-            </Card>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" fullWidth onClick={() => setShowForm(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                fullWidth
+                onClick={() => setShowForm(false)}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
-              <Button type="submit" fullWidth>
-                {t.submitReport}
+              <Button type="submit" fullWidth disabled={isSubmitting}>
+                {isSubmitting ? "Submitting…" : t.submitReport}
               </Button>
             </div>
           </form>
@@ -166,15 +342,18 @@ export function FixMyCityContent() {
         <Card
           className="mb-6 cursor-pointer border-dashed border-2 border-primary/30 bg-primary-light/30 transition-colors hover:border-primary/50"
           padding="lg"
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            setSubmitSuccess(false);
+            setShowForm(true);
+          }}
         >
           <div className="flex flex-col items-center text-center">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-white">
-              <Camera className="h-7 w-7" />
+              <Wrench className="h-7 w-7" />
             </div>
             <h3 className="font-semibold text-foreground">Report a New Issue</h3>
             <p className="mt-1 text-sm text-muted">
-              Snap a photo, add location details, and submit to your city.
+              Add location details and submit to your city.
             </p>
             <Button className="mt-4" size="sm">
               <Plus className="h-4 w-4" />
@@ -203,7 +382,10 @@ export function FixMyCityContent() {
             title="No reports in this category"
             description="You haven't filed any reports here yet. Tap below to report an issue in your neighborhood."
             actionLabel="Create Report"
-            onAction={() => setShowForm(true)}
+            onAction={() => {
+              setSubmitSuccess(false);
+              setShowForm(true);
+            }}
           />
         ) : (
           <div className="flex flex-col gap-3">
@@ -213,27 +395,29 @@ export function FixMyCityContent() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-foreground">{report.title}</p>
-                      {report.status === "Resolved" && (
+                      {report.status === "resolved" && (
                         <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
                       )}
                     </div>
                     <div className="mt-1 flex items-center gap-1 text-sm text-muted">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
-                      {report.location}
+                      {report.locationText}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5" />
-                        {report.date}
+                        {reportDate(report)}
                       </span>
                       <span className="flex items-center gap-1">
                         <FileText className="h-3.5 w-3.5" />
-                        {report.ticketId}
+                        {report.id.slice(0, 10).toUpperCase()}
                       </span>
                     </div>
                     <p className="mt-2 line-clamp-2 text-xs text-muted">{report.description}</p>
                   </div>
-                  <Badge variant={statusVariant[report.status]}>{report.status}</Badge>
+                  <Badge variant={statusVariant[report.status]}>
+                    {statusLabel[report.status]}
+                  </Badge>
                 </div>
                 <StatusProgress status={report.status} />
               </Card>
@@ -241,6 +425,17 @@ export function FixMyCityContent() {
           </div>
         )}
       </section>
+
+      {showLocationPicker && (
+        <LocationPickerModal
+          initialCenter={coords ?? getCityCenter(form.city)}
+          onConfirm={(location) => {
+            setCoords(location);
+            setShowLocationPicker(false);
+          }}
+          onClose={() => setShowLocationPicker(false)}
+        />
+      )}
     </PageContainer>
   );
 }

@@ -8,6 +8,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { AdminAreaHealthCard } from "@/components/features/admin/AdminAreaHealthCard";
 
 const stats = [
   { label: "Active Users", value: "24,891", change: "+12.4%", icon: Users, color: "text-blue-600 bg-blue-50" },
@@ -79,26 +80,7 @@ export default function AdminDashboardPage() {
           </div>
         </Card>
 
-        <Card padding="md">
-          <h2 className="mb-4 font-semibold text-foreground">Area Health Overview — Sector 22, Chandigarh</h2>
-          <div className="flex flex-col items-center py-6">
-            <p className="text-5xl font-bold text-primary">78</p>
-            <p className="mt-1 text-sm text-muted">Area Health Score</p>
-            <Badge variant="success" className="mt-3">Good Standing</Badge>
-          </div>
-          <div className="mt-4 space-y-3 border-t border-border pt-4">
-            {[
-              { label: "112 Response Rate", value: "94%" },
-              { label: "Report Resolution", value: "81%" },
-              { label: "Citizen Satisfaction", value: "87%" },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between text-sm">
-                <span className="text-muted">{item.label}</span>
-                <span className="font-semibold text-foreground">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <AdminAreaHealthCard />
       </div>
     </div>
   );
