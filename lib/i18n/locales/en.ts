@@ -19,7 +19,7 @@ const en: TranslationKeys = {
   guardianMode: "Guardian Mode",
   guardianModeSubtitle: "Share your live location with trusted guardians",
   safeWalk: "Safe Walk Guardian",
-  safeWalkSubtitle: "Safe routes and women safety features",
+  safeWalkSubtitle: "Safe route suggestions and women helpline",
   profile: "Profile",
   profileSubtitle: "Manage your account",
   nearbyActivity: "Nearby Activity",
