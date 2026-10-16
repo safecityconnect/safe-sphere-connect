@@ -76,7 +76,7 @@ export function DashboardContent() {
           <div>
             <p className="text-sm font-semibold text-foreground">{t.womenSafety}</p>
             <p className="text-xs text-muted">
-              {t.safeRoutes}, {t.nearbyPolice}, {t.womenHelpline}
+              {t.safeRoutes}, {t.womenHelpline}
             </p>
           </div>
         </div>

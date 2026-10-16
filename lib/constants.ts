@@ -99,7 +99,7 @@ export const DASHBOARD_CARDS: DashboardCardItem[] = [
   {
     title: "Safe Walk Guardian",
     titleKey: "safeWalk",
-    description: "Safe routes, women helpline, and night safety alerts",
+    description: "Safe routes, live journey sharing, and women helpline",
     descKey: "safeWalkSubtitle",
     href: ROUTES.safeWalk,
     icon: Shield,

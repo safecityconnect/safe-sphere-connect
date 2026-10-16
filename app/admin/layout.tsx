@@ -1,12 +1,5 @@
 import Link from "next/link";
-import {
-  AlertTriangle,
-  BarChart3,
-  LayoutDashboard,
-  Settings,
-  Users,
-  Wrench,
-} from "lucide-react";
+import { AlertTriangle, LayoutDashboard, Wrench } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
 import { AdminAuthGuard } from "@/components/layout/AdminAuthGuard";
 import { ROUTES } from "@/lib/constants";
@@ -16,9 +9,7 @@ const adminNav = [
   { label: "Overview", href: ROUTES.admin, icon: LayoutDashboard },
   { label: "Incidents", href: `${ROUTES.admin}/incidents`, icon: AlertTriangle },
   { label: "Reports", href: `${ROUTES.admin}/reports`, icon: Wrench },
-  { label: "Users", href: `${ROUTES.admin}/users`, icon: Users },
-  { label: "Analytics", href: `${ROUTES.admin}/analytics`, icon: BarChart3 },
-  { label: "Settings", href: `${ROUTES.admin}/settings`, icon: Settings },
+  // Users, Analytics and Settings pages are placeholders; hidden until built.
 ];
 
 export default function AdminLayout({
