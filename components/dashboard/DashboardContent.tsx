@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
-import { ChevronRight, Moon, Shield } from "lucide-react";
+import { ChevronRight, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
@@ -10,7 +10,6 @@ import { NotificationBell } from "@/components/features/notifications/Notificati
 import { PageContainer } from "@/components/layout/PageContainer";
 import { useLocale } from "@/components/providers/LocaleProvider";
 import { DASHBOARD_CARDS, ROUTES } from "@/lib/constants";
-import { NIGHT_SAFETY_ALERTS } from "@/lib/sample-data";
 import { auth } from "@/lib/firebase";
 import { useAreaHealth } from "@/hooks/useAreaHealth";
 import { useEffect, useState } from "react";
@@ -24,7 +23,6 @@ export function DashboardContent() {
     []
   );
   const { t } = useLocale();
-  const nightAlert = NIGHT_SAFETY_ALERTS[0];
 
   return (
     <PageContainer withBottomNav>
@@ -37,17 +35,6 @@ export function DashboardContent() {
         </div>
         <NotificationBell />
       </header>
-
-      <Card padding="sm" className="mb-6 border-indigo-200 bg-indigo-50/50">
-        <div className="flex items-start gap-3">
-          <Moon className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">{t.nightSafetyAlerts}</p>
-            <p className="text-xs text-muted">{nightAlert.message}</p>
-          </div>
-          <Badge variant="warning">After 8 PM</Badge>
-        </div>
-      </Card>
 
       <Link href={ROUTES.areaHealth} className="mb-6 block">
         <Card

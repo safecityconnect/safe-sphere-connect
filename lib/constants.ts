@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export const APP_NAME = "SafeCity Connect";
+export const APP_NAME = "SafeSphere Connect";
 export const TAGLINE = "Report. Protect. Respond.";
 export const REGION = "India";
 

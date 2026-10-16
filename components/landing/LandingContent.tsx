@@ -207,7 +207,7 @@ export function LandingContent() {
               together across India. Dial 112 for emergencies, 1091 for women helpline.
             </p>
             <Button href={ROUTES.register} size="lg" className="mt-8">
-              Join SafeCity Connect
+              Join SafeSphere Connect
             </Button>
           </div>
         </section>
@@ -217,7 +217,7 @@ export function LandingContent() {
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
           <Logo size="sm" href="/" />
           <p className="text-sm text-muted">
-            &copy; {new Date().getFullYear()} SafeCity Connect India. {t.tagline}
+            &copy; {new Date().getFullYear()} SafeSphere Connect India. {t.tagline}
           </p>
         </div>
       </footer>

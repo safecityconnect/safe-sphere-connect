@@ -165,7 +165,7 @@ export function HelpSupportContent() {
             <div>
               <p className="text-sm font-medium text-foreground">Community Forum</p>
               <p className="mt-0.5 text-xs text-muted">
-                Connect with other SafeCity Connect users, share tips, and get community help via the Community Feed.
+                Connect with other SafeSphere Connect users, share tips, and get community help via the Community Feed.
               </p>
             </div>
           </div>

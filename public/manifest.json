@@ -1,6 +1,6 @@
 {
-  "name": "SafeCity Connect India",
-  "short_name": "SafeCity",
+  "name": "SafeSphere Connect India",
+  "short_name": "SafeSphere",
   "description": "Report. Protect. Respond. — India's community safety companion. Dial 112 for emergencies.",
   "start_url": "/dashboard",
   "display": "standalone",

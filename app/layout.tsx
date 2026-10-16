@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     default: APP_NAME,
     template: `%s | ${APP_NAME}`,
   },
-  description: `${TAGLINE} — Report incidents, protect your community, and respond to emergencies across ${REGION} with SafeCity Connect. Dial 112 for national emergency.`,
+  description: `${TAGLINE} — Report incidents, protect your community, and respond to emergencies across ${REGION} with SafeSphere Connect. Dial 112 for national emergency.`,
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

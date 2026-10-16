@@ -27,7 +27,6 @@ import {
   DEFAULT_CITY,
   INDIAN_CITIES,
   MAP_FILTERS,
-  POLICE_STATIONS,
   type IncidentSeverity,
   type IndianCity,
   type MapMarkerType,
@@ -279,11 +278,6 @@ export function SafetyMapContent() {
     );
   };
 
-  const nearbyPolice = useMemo(
-    () => POLICE_STATIONS.filter((s) => s.city === city),
-    [city]
-  );
-
   const selected = filtered.find((i) => i.id === activeSelectedId) ?? null;
 
   if (loading) {
@@ -416,33 +410,6 @@ export function SafetyMapContent() {
           <p className="mt-2 text-sm text-foreground/80">{selected.description}</p>
           <IncidentImages urls={selected.imageUrls} className="mt-3" />
         </Card>
-      )}
-
-      {nearbyPolice.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold text-foreground">{t.nearbyPolice}</h2>
-          <div className="flex flex-col gap-2">
-            {nearbyPolice.map((station) => (
-              <Card key={station.id} padding="sm" className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{station.name}</p>
-                    <p className="text-xs text-muted">{station.address}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-medium text-primary">{station.distance}</p>
-                  <Button variant="outline" size="sm" href="tel:100" className="mt-1 !px-2">
-                    {station.phone}
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </section>
       )}
 
       <section>

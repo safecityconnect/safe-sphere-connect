@@ -47,7 +47,7 @@ export default function LoginPage() {
         <Card padding="lg">
           <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
           <p className="mt-1 text-sm text-muted">
-            Sign in to your SafeCity Connect account
+            Sign in to your SafeSphere Connect account
           </p>
 
             <form

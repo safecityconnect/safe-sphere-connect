@@ -1,7 +1,7 @@
 import type { TranslationKeys } from "../types";
 
 const en: TranslationKeys = {
-  appName: "SafeCity Connect",
+  appName: "SafeSphere Connect",
   tagline: "Report. Protect. Respond.",
   language: "Language",
   selectLanguage: "Select Language",
